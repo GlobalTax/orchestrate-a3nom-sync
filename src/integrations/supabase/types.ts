@@ -14,16 +14,243 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      absences: {
+        Row: {
+          created_at: string | null
+          employee_id: string
+          fecha: string
+          horas_ausencia: number
+          id: string
+          motivo: string | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string | null
+          employee_id: string
+          fecha: string
+          horas_ausencia: number
+          id?: string
+          motivo?: string | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string | null
+          employee_id?: string
+          fecha?: string
+          horas_ausencia?: number
+          id?: string
+          motivo?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "absences_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          apellidos: string
+          centro: string | null
+          codtrabajador_a3nom: string | null
+          created_at: string | null
+          email: string | null
+          employee_id_orquest: string | null
+          fecha_alta: string | null
+          fecha_baja: string | null
+          id: string
+          nombre: string
+          updated_at: string | null
+        }
+        Insert: {
+          apellidos: string
+          centro?: string | null
+          codtrabajador_a3nom?: string | null
+          created_at?: string | null
+          email?: string | null
+          employee_id_orquest?: string | null
+          fecha_alta?: string | null
+          fecha_baja?: string | null
+          id?: string
+          nombre: string
+          updated_at?: string | null
+        }
+        Update: {
+          apellidos?: string
+          centro?: string | null
+          codtrabajador_a3nom?: string | null
+          created_at?: string | null
+          email?: string | null
+          employee_id_orquest?: string | null
+          fecha_alta?: string | null
+          fecha_baja?: string | null
+          id?: string
+          nombre?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      payrolls: {
+        Row: {
+          coste_total: number | null
+          created_at: string | null
+          desglose_costes: Json | null
+          employee_id: string
+          horas_formacion: number | null
+          horas_trabajadas: number | null
+          horas_vacaciones: number | null
+          id: string
+          periodo_fin: string
+          periodo_inicio: string
+        }
+        Insert: {
+          coste_total?: number | null
+          created_at?: string | null
+          desglose_costes?: Json | null
+          employee_id: string
+          horas_formacion?: number | null
+          horas_trabajadas?: number | null
+          horas_vacaciones?: number | null
+          id?: string
+          periodo_fin: string
+          periodo_inicio: string
+        }
+        Update: {
+          coste_total?: number | null
+          created_at?: string | null
+          desglose_costes?: Json | null
+          employee_id?: string
+          horas_formacion?: number | null
+          horas_trabajadas?: number | null
+          horas_vacaciones?: number | null
+          id?: string
+          periodo_fin?: string
+          periodo_inicio?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payrolls_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          apellidos: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          nombre: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          apellidos?: string | null
+          created_at?: string | null
+          email?: string | null
+          id: string
+          nombre?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          apellidos?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nombre?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      schedules: {
+        Row: {
+          created_at: string | null
+          employee_id: string
+          fecha: string
+          hora_fin: string
+          hora_inicio: string
+          horas_planificadas: number
+          id: string
+          service_id: string | null
+          tipo_asignacion: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          employee_id: string
+          fecha: string
+          hora_fin: string
+          hora_inicio: string
+          horas_planificadas: number
+          id?: string
+          service_id?: string | null
+          tipo_asignacion?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          employee_id?: string
+          fecha?: string
+          hora_fin?: string
+          hora_inicio?: string
+          horas_planificadas?: number
+          id?: string
+          service_id?: string | null
+          tipo_asignacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          centro: string | null
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          centro?: string | null
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          centro?: string | null
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "gestor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +377,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "gestor"],
+    },
   },
 } as const

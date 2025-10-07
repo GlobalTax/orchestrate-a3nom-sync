@@ -1,0 +1,137 @@
+import { ReactNode, useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Session } from "@supabase/supabase-js";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Calendar, 
+  DollarSign, 
+  LogOut,
+  Building2 
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+interface LayoutProps {
+  children: ReactNode;
+}
+
+const Layout = ({ children }: LayoutProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Sesión cerrada correctamente");
+    navigate("/auth");
+  };
+
+  const menuItems = [
+    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+    { icon: Users, label: "Empleados", path: "/employees" },
+    { icon: Calendar, label: "Calendario", path: "/calendar" },
+    { icon: DollarSign, label: "Costes", path: "/costs" },
+  ];
+
+  const isActive = (path: string) => location.pathname === path;
+
+  if (!session) return null;
+
+  return (
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <Sidebar className="border-r border-sidebar-border">
+          <div className="p-6 border-b border-sidebar-border">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-sidebar-primary rounded-lg">
+                <Building2 className="h-6 w-6 text-sidebar-primary-foreground" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sidebar-foreground">Orquest + A3Nom</h2>
+                <p className="text-xs text-sidebar-foreground/60">Gestión Integrada</p>
+              </div>
+            </div>
+          </div>
+
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Menú Principal</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        onClick={() => navigate(item.path)}
+                        isActive={isActive(item.path)}
+                        className="w-full"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+
+          <div className="p-4 border-t border-sidebar-border mt-auto">
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesión
+            </Button>
+          </div>
+        </Sidebar>
+
+        <div className="flex-1 flex flex-col">
+          <header className="h-16 border-b border-border bg-card px-6 flex items-center">
+            <SidebarTrigger />
+          </header>
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+};
+
+export default Layout;
