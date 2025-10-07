@@ -18,7 +18,7 @@ interface UserWithRoles {
   email: string;
   nombre: string;
   apellidos: string;
-  roles: string[];
+  roles: ("admin" | "gestor")[];
   centro?: string;
 }
 
@@ -29,7 +29,7 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [newRole, setNewRole] = useState<string>("");
+  const [newRole, setNewRole] = useState<"admin" | "gestor" | "">("");
   const [newCentro, setNewCentro] = useState<string>("");
 
   useEffect(() => {
@@ -85,7 +85,7 @@ const Users = () => {
     }
   };
 
-  const handleUpdateRole = async (userId: string, role: string, centro?: string) => {
+  const handleUpdateRole = async (userId: string, role: "admin" | "gestor", centro?: string) => {
     try {
       // Check if role already exists
       const { data: existingRole } = await supabase
@@ -128,7 +128,7 @@ const Users = () => {
     }
   };
 
-  const handleRemoveRole = async (userId: string, role: string) => {
+  const handleRemoveRole = async (userId: string, role: "admin" | "gestor") => {
     try {
       const { error } = await supabase
         .from("user_roles")
@@ -256,7 +256,7 @@ const Users = () => {
                       <TableCell className="text-right">
                         {selectedUser === user.id ? (
                           <div className="space-y-2">
-                            <Select value={newRole} onValueChange={setNewRole}>
+                            <Select value={newRole} onValueChange={(value) => setNewRole(value as "admin" | "gestor")}>
                               <SelectTrigger className="w-32">
                                 <SelectValue placeholder="Rol" />
                               </SelectTrigger>
@@ -276,7 +276,7 @@ const Users = () => {
                             <div className="flex gap-1">
                               <Button
                                 size="sm"
-                                onClick={() => handleUpdateRole(user.id, newRole, newCentro)}
+                                onClick={() => newRole && handleUpdateRole(user.id, newRole, newCentro)}
                                 disabled={!newRole}
                               >
                                 Guardar
