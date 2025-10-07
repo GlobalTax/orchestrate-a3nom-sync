@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
+import EmployeeDetail from "./pages/EmployeeDetail";
 import Calendar from "./pages/Calendar";
 import Costs from "./pages/Costs";
 import Users from "./pages/admin/Users";
@@ -28,6 +29,7 @@ const App = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/employees" element={<Employees />} />
+            <Route path="/employees/:id" element={<EmployeeDetail />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/costs" element={<Costs />} />
             <Route path="/admin/users" element={<Users />} />
