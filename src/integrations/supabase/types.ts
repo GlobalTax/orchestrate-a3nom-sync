@@ -273,6 +273,27 @@ export type Database = {
           tasa_absentismo: number
         }[]
       }
+      get_payroll_costs: {
+        Args: { p_centro?: string; p_end_date: string; p_start_date: string }
+        Returns: {
+          coste_medio: number
+          coste_total: number
+          employee_centro: string
+          employee_id: string
+          employee_name: string
+          horas_formacion: number
+          horas_trabajadas: number
+          horas_vacaciones: number
+        }[]
+      }
+      get_planned_vs_actual_costs: {
+        Args: { p_centro?: string; p_end_date: string; p_start_date: string }
+        Returns: {
+          centro: string
+          costes_planificados: number
+          costes_reales: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
