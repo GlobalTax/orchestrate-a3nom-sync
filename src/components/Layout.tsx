@@ -21,7 +21,8 @@ import {
   DollarSign, 
   LogOut,
   Building2,
-  Shield
+  Shield,
+  FileSpreadsheet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -134,6 +135,16 @@ const Layout = ({ children }: LayoutProps) => {
                       >
                         <Users className="h-4 w-4" />
                         <span>Mapeo de IDs</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => navigate("/admin/importar-nominas")}
+                        isActive={isActive("/admin/importar-nominas")}
+                        className="w-full"
+                      >
+                        <FileSpreadsheet className="h-4 w-4" />
+                        <span>Importar Nóminas</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>

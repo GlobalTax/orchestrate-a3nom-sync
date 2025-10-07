@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import Layout from "@/components/Layout";
@@ -9,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, DollarSign, Calendar as CalendarIcon, Loader2, TrendingUp, TrendingDown } from "lucide-react";
+import { Download, DollarSign, Calendar as CalendarIcon, Loader2, TrendingUp, TrendingDown, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
@@ -34,6 +35,7 @@ interface ComparisonData {
 }
 
 const Costs = () => {
+  const navigate = useNavigate();
   const { isAdmin } = useUserRole();
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
@@ -170,6 +172,17 @@ const Costs = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
+            {isAdmin && (
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/admin/importar-nominas")}
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Importar Nóminas
+              </Button>
+            )}
+            
             <Select value={selectedCentro} onValueChange={setSelectedCentro}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Seleccionar centro" />

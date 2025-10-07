@@ -94,6 +94,78 @@ export type Database = {
         }
         Relationships: []
       }
+      import_logs: {
+        Row: {
+          created_at: string | null
+          error_details: Json | null
+          error_rows: number
+          file_name: string
+          file_type: string
+          id: string
+          loaded_rows: number
+          skipped_rows: number
+          status: string
+          total_rows: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_details?: Json | null
+          error_rows?: number
+          file_name: string
+          file_type: string
+          id?: string
+          loaded_rows?: number
+          skipped_rows?: number
+          status?: string
+          total_rows?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_details?: Json | null
+          error_rows?: number
+          file_name?: string
+          file_type?: string
+          id?: string
+          loaded_rows?: number
+          skipped_rows?: number
+          status?: string
+          total_rows?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      import_mapping_profiles: {
+        Row: {
+          column_mappings: Json
+          created_at: string | null
+          file_type: string
+          id: string
+          profile_name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          column_mappings: Json
+          created_at?: string | null
+          file_type: string
+          id?: string
+          profile_name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          column_mappings?: Json
+          created_at?: string | null
+          file_type?: string
+          id?: string
+          profile_name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       payrolls: {
         Row: {
           coste_total: number | null
