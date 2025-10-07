@@ -12,6 +12,7 @@ import EmployeeDetail from "./pages/EmployeeDetail";
 import Calendar from "./pages/Calendar";
 import Costs from "./pages/Costs";
 import Users from "./pages/admin/Users";
+import EmployeeMapping from "./pages/admin/EmployeeMapping";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/costs" element={<Costs />} />
             <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/mapeo-empleados" element={<EmployeeMapping />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

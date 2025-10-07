@@ -171,6 +171,17 @@ const Users = () => {
           </p>
         </div>
 
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => navigate("/admin/mapeo-empleados")}
+            className="gap-2"
+          >
+            <UserCog className="h-4 w-4" />
+            Mapeo de IDs
+          </Button>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Buscar Usuarios</CardTitle>
