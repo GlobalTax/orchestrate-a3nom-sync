@@ -241,6 +241,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_centros: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          centro: string
+        }[]
+      }
+      get_cost_metrics: {
+        Args: { p_centro?: string; p_end_date: string; p_start_date: string }
+        Returns: {
+          coste_medio_hora: number
+          coste_total: number
+          total_horas: number
+        }[]
+      }
+      get_daily_hours_evolution: {
+        Args: { p_centro?: string; p_end_date: string; p_start_date: string }
+        Returns: {
+          fecha: string
+          horas_ausencia: number
+          horas_planificadas: number
+          horas_trabajadas: number
+        }[]
+      }
+      get_hours_metrics: {
+        Args: { p_centro?: string; p_end_date: string; p_start_date: string }
+        Returns: {
+          horas_ausencia: number
+          horas_planificadas: number
+          horas_trabajadas: number
+          tasa_absentismo: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
