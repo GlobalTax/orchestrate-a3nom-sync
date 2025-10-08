@@ -468,6 +468,36 @@ export type Database = {
         }
         Relationships: []
       }
+      orquest_latency_logs: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          latency_ms: number
+          method: string
+          status_code: number
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          latency_ms: number
+          method?: string
+          status_code: number
+          success: boolean
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          latency_ms?: number
+          method?: string
+          status_code?: number
+          success?: boolean
+        }
+        Relationships: []
+      }
       orquest_services: {
         Row: {
           datos_completos: Json | null
@@ -670,6 +700,63 @@ export type Database = {
           trigger_source?: string | null
           triggered_by?: string | null
           updated_rows?: number | null
+        }
+        Relationships: []
+      }
+      system_health_logs: {
+        Row: {
+          absences_count: number | null
+          checked_at: string
+          created_at: string
+          details: Json | null
+          employees_count: number | null
+          id: string
+          last_sync_at: string | null
+          last_sync_status: string | null
+          orquest_error: string | null
+          orquest_latency_ms: number | null
+          orquest_status: string
+          overall_status: string
+          payrolls_count: number | null
+          schedules_count: number | null
+          supabase_latency_ms: number | null
+          supabase_status: string
+        }
+        Insert: {
+          absences_count?: number | null
+          checked_at?: string
+          created_at?: string
+          details?: Json | null
+          employees_count?: number | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          orquest_error?: string | null
+          orquest_latency_ms?: number | null
+          orquest_status: string
+          overall_status: string
+          payrolls_count?: number | null
+          schedules_count?: number | null
+          supabase_latency_ms?: number | null
+          supabase_status: string
+        }
+        Update: {
+          absences_count?: number | null
+          checked_at?: string
+          created_at?: string
+          details?: Json | null
+          employees_count?: number | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          orquest_error?: string | null
+          orquest_latency_ms?: number | null
+          orquest_status?: string
+          overall_status?: string
+          payrolls_count?: number | null
+          schedules_count?: number | null
+          supabase_latency_ms?: number | null
+          supabase_status?: string
         }
         Relationships: []
       }

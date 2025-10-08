@@ -20,6 +20,7 @@ import Alerts from "./pages/admin/Alerts";
 import Centres from "./pages/admin/Centres";
 import Settings from "./pages/admin/Settings";
 import Sync from "./pages/admin/Sync";
+import Health from "./pages/admin/Health";
 import DataQuality from "./pages/DataQuality";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
@@ -55,6 +56,7 @@ const App = () => {
             <Route path="/admin/centres" element={<Centres />} />
             <Route path="/admin/ajustes" element={<Settings />} />
             <Route path="/admin/sincronizar" element={<Sync />} />
+            <Route path="/admin/health" element={<Health />} />
             <Route path="/notificaciones" element={<Notifications />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

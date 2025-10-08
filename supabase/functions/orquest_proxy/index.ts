@@ -11,6 +11,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = performance.now(); // Medición de latencia
+
   try {
     const { path, method = 'GET', query = {}, body } = await req.json();
 
@@ -53,6 +55,9 @@ serve(async (req) => {
 
     // Forward request to Orquest
     const response = await fetch(url, requestOptions);
+    const endTime = performance.now();
+    const latencyMs = Math.round(endTime - startTime);
+    
     const data = await response.json();
 
     if (!response.ok) {
@@ -61,7 +66,8 @@ serve(async (req) => {
         JSON.stringify({ 
           error: 'Orquest API error', 
           status: response.status,
-          details: data 
+          details: data,
+          latency_ms: latencyMs
         }),
         { 
           status: response.status, 
@@ -70,10 +76,13 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Orquest request successful: ${method} ${path}`);
+    console.log(`Orquest request successful: ${method} ${path} (${latencyMs}ms)`);
 
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify({
+        ...data,
+        _metadata: { latency_ms: latencyMs }
+      }),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -81,10 +90,14 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    const endTime = performance.now();
+    const latencyMs = Math.round(endTime - startTime);
+    
     console.error('Error in orquest_proxy function:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        latency_ms: latencyMs
       }),
       { 
         status: 500, 
