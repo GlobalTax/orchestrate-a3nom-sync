@@ -5,6 +5,7 @@ export type AppRole = "admin" | "gestor";
 
 export const useUserRole = () => {
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [centros, setCentros] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -24,12 +25,18 @@ export const useUserRole = () => {
 
         const { data, error } = await supabase
           .from("user_roles")
-          .select("role")
+          .select("role, centro")
           .eq("user_id", user.id);
 
         if (error) throw error;
 
-        setRoles(data?.map(r => r.role as AppRole) || []);
+        const userRoles = data?.map(r => r.role as AppRole) || [];
+        const userCentros = data
+          ?.filter(r => r.centro)
+          .map(r => r.centro as string) || [];
+
+        setRoles(userRoles);
+        setCentros(userCentros);
       } catch (error) {
         console.error("Error fetching user roles:", error);
         setRoles([]);
@@ -50,13 +57,18 @@ export const useUserRole = () => {
   const hasRole = (role: AppRole) => roles.includes(role);
   const isAdmin = hasRole("admin");
   const isGestor = hasRole("gestor");
+  const canAccessCentro = (centro: string) => {
+    return isAdmin || centros.includes(centro);
+  };
 
   return {
     roles,
+    centros,
     loading,
     userId,
     hasRole,
     isAdmin,
     isGestor,
+    canAccessCentro,
   };
 };

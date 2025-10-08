@@ -30,6 +30,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useCentro } from "@/contexts/CentroContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import NotificationBell from "@/components/NotificationBell";
 
 interface LayoutProps {
@@ -41,6 +43,7 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
   const { isAdmin } = useUserRole();
+  const { selectedCentro, setSelectedCentro, availableCentros } = useCentro();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -172,6 +175,16 @@ const Layout = ({ children }: LayoutProps) => {
                         <span>Alertas</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => navigate("/admin/centros")}
+                        isActive={isActive("/admin/centros")}
+                        className="w-full"
+                      >
+                        <Building2 className="h-4 w-4" />
+                        <span>Centros</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -193,7 +206,31 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="flex-1 flex flex-col">
           <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
             <SidebarTrigger />
-            <NotificationBell />
+            
+            <div className="flex items-center gap-4">
+              {/* Centro selector - only show if user has multiple centros or is admin */}
+              {(availableCentros.length > 1 || isAdmin) && (
+                <Select
+                  value={selectedCentro || "all"}
+                  onValueChange={(val) => setSelectedCentro(val === "all" ? null : val)}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <Building2 className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Centro activo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isAdmin && <SelectItem value="all">Todos los centros</SelectItem>}
+                    {availableCentros.map((centro) => (
+                      <SelectItem key={centro} value={centro}>
+                        {centro}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              <NotificationBell />
+            </div>
           </header>
           <main className="flex-1 overflow-auto">
             {children}

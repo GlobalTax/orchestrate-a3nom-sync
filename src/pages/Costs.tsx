@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useCentro } from "@/contexts/CentroContext";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -37,39 +37,21 @@ interface ComparisonData {
 const Costs = () => {
   const navigate = useNavigate();
   const { isAdmin } = useUserRole();
+  const { selectedCentro } = useCentro();
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
-  const [selectedCentro, setSelectedCentro] = useState<string>("all");
-  const [centros, setCentros] = useState<string[]>([]);
   
   const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
   const [comparisonData, setComparisonData] = useState<ComparisonData[]>([]);
 
   useEffect(() => {
-    fetchCentros();
-  }, []);
-
-  useEffect(() => {
     fetchCostData();
   }, [startDate, endDate, selectedCentro]);
-
-  const fetchCentros = async () => {
-    try {
-      const { data, error } = await supabase.rpc("get_centros");
-      if (error) throw error;
-      setCentros(data?.map((c: { centro: string }) => c.centro) || []);
-    } catch (error: any) {
-      console.error("Error fetching centros:", error);
-      toast.error("Error al cargar centros");
-    }
-  };
 
   const fetchCostData = async () => {
     try {
       setLoading(true);
-      
-      const centro = selectedCentro === "all" ? null : selectedCentro;
       const startDateStr = format(startDate, "yyyy-MM-dd");
       const endDateStr = format(endDate, "yyyy-MM-dd");
 
@@ -77,7 +59,7 @@ const Costs = () => {
       const { data: payrollCosts, error: payrollError } = await supabase.rpc("get_payroll_costs", {
         p_start_date: startDateStr,
         p_end_date: endDateStr,
-        p_centro: centro,
+        p_centro: selectedCentro,
       });
 
       if (payrollError) throw payrollError;
@@ -87,7 +69,7 @@ const Costs = () => {
       const { data: comparison, error: comparisonError } = await supabase.rpc("get_planned_vs_actual_costs", {
         p_start_date: startDateStr,
         p_end_date: endDateStr,
-        p_centro: centro,
+        p_centro: selectedCentro,
       });
 
       if (comparisonError) throw comparisonError;
@@ -182,20 +164,6 @@ const Costs = () => {
                 Importar Nóminas
               </Button>
             )}
-            
-            <Select value={selectedCentro} onValueChange={setSelectedCentro}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Seleccionar centro" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los centros</SelectItem>
-                {centros.map((centro) => (
-                  <SelectItem key={centro} value={centro}>
-                    {centro}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
             <Popover>
               <PopoverTrigger asChild>

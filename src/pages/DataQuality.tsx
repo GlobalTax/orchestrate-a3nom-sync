@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useCentro } from "@/contexts/CentroContext";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,11 +53,11 @@ const tipoLabels = {
 
 export default function DataQuality() {
   const { isAdmin, isGestor, loading: roleLoading } = useUserRole();
+  const { selectedCentro: globalCentro } = useCentro();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>("current-month");
-  const [selectedCentro, setSelectedCentro] = useState<string>("all");
   const [selectedSeveridad, setSelectedSeveridad] = useState<string>("all");
   const [selectedEstado, setSelectedEstado] = useState<string>("pending");
   const [detailDialog, setDetailDialog] = useState<DQIssue | null>(null);
@@ -91,7 +92,7 @@ export default function DataQuality() {
 
   // Fetch DQ issues
   const { data: issues = [], isLoading, refetch } = useQuery({
-    queryKey: ["dq-issues", selectedCentro, selectedSeveridad, selectedEstado, dateRange],
+    queryKey: ["dq-issues", globalCentro, selectedSeveridad, selectedEstado, dateRange],
     queryFn: async () => {
       let query = supabase
         .from("dq_issues")
@@ -100,8 +101,8 @@ export default function DataQuality() {
         .lte("periodo_fin", format(dateRange.end, "yyyy-MM-dd"))
         .order("created_at", { ascending: false });
 
-      if (selectedCentro !== "all") {
-        query = query.eq("centro", selectedCentro);
+      if (globalCentro) {
+        query = query.eq("centro", globalCentro);
       }
 
       if (selectedSeveridad !== "all") {
@@ -127,7 +128,7 @@ export default function DataQuality() {
       const { data, error } = await supabase.rpc("detect_dq_issues", {
         p_start_date: format(dateRange.start, "yyyy-MM-dd"),
         p_end_date: format(dateRange.end, "yyyy-MM-dd"),
-        p_centro: selectedCentro === "all" ? null : selectedCentro,
+        p_centro: globalCentro,
       });
       if (error) throw error;
       return data;
@@ -250,20 +251,6 @@ export default function DataQuality() {
                   <SelectItem value="current-month">Mes actual</SelectItem>
                   <SelectItem value="last-month">Mes anterior</SelectItem>
                   <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedCentro} onValueChange={setSelectedCentro}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Centro" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los centros</SelectItem>
-                  {centros.map((centro: any) => (
-                    <SelectItem key={centro.centro} value={centro.centro}>
-                      {centro.centro}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
 

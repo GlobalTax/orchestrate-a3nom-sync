@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { CentroProvider } from "@/contexts/CentroContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -16,6 +17,7 @@ import EmployeeMapping from "./pages/admin/EmployeeMapping";
 import PayrollImport from "./pages/admin/PayrollImport";
 import Audit from "./pages/admin/Audit";
 import Alerts from "./pages/admin/Alerts";
+import Centres from "./pages/admin/Centres";
 import DataQuality from "./pages/DataQuality";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
@@ -25,10 +27,11 @@ const queryClient = new QueryClient();
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <Toaster />
-          <Sonner />
+      <CentroProvider>
+        <TooltipProvider>
+          <BrowserRouter>
+            <Toaster />
+            <Sonner />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -44,12 +47,14 @@ const App = () => {
             <Route path="/admin/importar-nominas" element={<PayrollImport />} />
             <Route path="/admin/auditoria" element={<Audit />} />
             <Route path="/admin/alertas" element={<Alerts />} />
+            <Route path="/admin/centros" element={<Centres />} />
             <Route path="/notificaciones" element={<Notifications />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </CentroProvider>
     </QueryClientProvider>
   );
 };

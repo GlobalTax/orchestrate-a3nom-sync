@@ -66,8 +66,6 @@ const Dashboard = () => {
   const fetchMetrics = async () => {
     try {
       setLoading(true);
-      
-      const centro = selectedCentro === "all" ? null : selectedCentro;
       const startDateStr = format(startDate, "yyyy-MM-dd");
       const endDateStr = format(endDate, "yyyy-MM-dd");
 
@@ -75,7 +73,7 @@ const Dashboard = () => {
       const { data: hoursData, error: hoursError } = await supabase.rpc("get_hours_metrics", {
         p_start_date: startDateStr,
         p_end_date: endDateStr,
-        p_centro: centro,
+        p_centro: selectedCentro,
       });
 
       if (hoursError) throw hoursError;
@@ -85,7 +83,7 @@ const Dashboard = () => {
       const { data: costData, error: costError } = await supabase.rpc("get_cost_metrics", {
         p_start_date: startDateStr,
         p_end_date: endDateStr,
-        p_centro: centro,
+        p_centro: selectedCentro,
       });
 
       if (costError) throw costError;
@@ -95,7 +93,7 @@ const Dashboard = () => {
       const { data: dailyEvolution, error: dailyError } = await supabase.rpc("get_daily_hours_evolution", {
         p_start_date: startDateStr,
         p_end_date: endDateStr,
-        p_centro: centro,
+        p_centro: selectedCentro,
       });
 
       if (dailyError) throw dailyError;

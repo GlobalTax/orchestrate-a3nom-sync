@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useCentro } from "@/contexts/CentroContext";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ interface CalendarEventData extends CalendarEvent {
 
 const Calendar = () => {
   const { isAdmin } = useUserRole();
+  const { selectedCentro } = useCentro();
   const [view, setView] = useState<View>("month");
   const [date, setDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
@@ -71,10 +73,8 @@ const Calendar = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [absences, setAbsences] = useState<Absence[]>([]);
-  const [centros, setCentros] = useState<string[]>([]);
   const [services, setServices] = useState<string[]>([]);
   
-  const [selectedCentro, setSelectedCentro] = useState<string>("all");
   const [selectedService, setSelectedService] = useState<string>("all");
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
   
@@ -109,11 +109,10 @@ const Calendar = () => {
     try {
       setLoading(true);
 
-      const [employeesRes, schedulesRes, absencesRes, centrosRes] = await Promise.all([
+      const [employeesRes, schedulesRes, absencesRes] = await Promise.all([
         supabase.from("employees").select("*").order("apellidos"),
         supabase.from("schedules").select("*"),
         supabase.from("absences").select("*"),
-        supabase.rpc("get_centros"),
       ]);
 
       if (employeesRes.error) throw employeesRes.error;
@@ -123,7 +122,6 @@ const Calendar = () => {
       setEmployees(employeesRes.data || []);
       setSchedules(schedulesRes.data || []);
       setAbsences(absencesRes.data || []);
-      setCentros(centrosRes.data?.map((c: { centro: string }) => c.centro) || []);
 
       // Extract unique services
       const uniqueServices = Array.from(
@@ -173,7 +171,7 @@ const Calendar = () => {
         const emp = employees.find((e) => e.id === s.employee_id);
         if (!emp) return false;
 
-        const matchesCentro = selectedCentro === "all" || emp.centro === selectedCentro;
+        const matchesCentro = !selectedCentro || emp.centro === selectedCentro;
         const matchesService = selectedService === "all" || s.service_id === selectedService;
         const matchesEmployee = selectedEmployee === "all" || s.employee_id === selectedEmployee;
 
@@ -203,7 +201,7 @@ const Calendar = () => {
         const emp = employees.find((e) => e.id === a.employee_id);
         if (!emp) return false;
 
-        const matchesCentro = selectedCentro === "all" || emp.centro === selectedCentro;
+        const matchesCentro = !selectedCentro || emp.centro === selectedCentro;
         const matchesEmployee = selectedEmployee === "all" || a.employee_id === selectedEmployee;
 
         return matchesCentro && matchesEmployee;
@@ -696,19 +694,6 @@ const Calendar = () => {
             <CardTitle>Filtros</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col sm:flex-row gap-3">
-            <Select value={selectedCentro} onValueChange={setSelectedCentro}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Filtrar por centro" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los centros</SelectItem>
-                {centros.map((centro) => (
-                  <SelectItem key={centro} value={centro}>
-                    {centro}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
             <Select value={selectedService} onValueChange={setSelectedService}>
               <SelectTrigger className="w-full sm:w-[200px]">

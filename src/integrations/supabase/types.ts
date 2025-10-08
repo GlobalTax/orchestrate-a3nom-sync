@@ -213,6 +213,42 @@ export type Database = {
         }
         Relationships: []
       }
+      centres: {
+        Row: {
+          activo: boolean
+          ciudad: string | null
+          codigo: string
+          created_at: string
+          direccion: string | null
+          id: string
+          nombre: string
+          pais: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          ciudad?: string | null
+          codigo: string
+          created_at?: string
+          direccion?: string | null
+          id?: string
+          nombre: string
+          pais?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          ciudad?: string | null
+          codigo?: string
+          created_at?: string
+          direccion?: string | null
+          id?: string
+          nombre?: string
+          pais?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dq_issues: {
         Row: {
           centro: string | null
