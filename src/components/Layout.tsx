@@ -25,7 +25,8 @@ import {
   FileSpreadsheet,
   AlertTriangle,
   History,
-  Bell
+  Bell,
+  Settings2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -183,6 +184,16 @@ const Layout = ({ children }: LayoutProps) => {
                       >
                         <Building2 className="h-4 w-4" />
                         <span>Centros</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => navigate("/admin/ajustes")}
+                        isActive={isActive("/admin/ajustes")}
+                        className="w-full"
+                      >
+                        <Settings2 className="h-4 w-4" />
+                        <span>Ajustes</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>

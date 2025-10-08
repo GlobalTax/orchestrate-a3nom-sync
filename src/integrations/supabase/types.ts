@@ -426,6 +426,48 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_settings: {
+        Row: {
+          created_at: string
+          email_remitente_email: string | null
+          email_remitente_nombre: string | null
+          id: string
+          nominas_columnas_requeridas: Json | null
+          nominas_formato_esperado: string | null
+          orquest_base_url: string | null
+          orquest_default_service_id: string | null
+          orquest_periodo_politica: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_remitente_email?: string | null
+          email_remitente_nombre?: string | null
+          id?: string
+          nominas_columnas_requeridas?: Json | null
+          nominas_formato_esperado?: string | null
+          orquest_base_url?: string | null
+          orquest_default_service_id?: string | null
+          orquest_periodo_politica?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_remitente_email?: string | null
+          email_remitente_nombre?: string | null
+          id?: string
+          nominas_columnas_requeridas?: Json | null
+          nominas_formato_esperado?: string | null
+          orquest_base_url?: string | null
+          orquest_default_service_id?: string | null
+          orquest_periodo_politica?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       orquest_services: {
         Row: {
           datos_completos: Json | null
@@ -510,6 +552,7 @@ export type Database = {
           email: string | null
           id: string
           nombre: string | null
+          theme: string | null
           updated_at: string | null
         }
         Insert: {
@@ -518,6 +561,7 @@ export type Database = {
           email?: string | null
           id: string
           nombre?: string | null
+          theme?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -526,6 +570,7 @@ export type Database = {
           email?: string | null
           id?: string
           nombre?: string | null
+          theme?: string | null
           updated_at?: string | null
         }
         Relationships: []

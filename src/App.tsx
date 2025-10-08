@@ -18,13 +18,17 @@ import PayrollImport from "./pages/admin/PayrollImport";
 import Audit from "./pages/admin/Audit";
 import Alerts from "./pages/admin/Alerts";
 import Centres from "./pages/admin/Centres";
+import Settings from "./pages/admin/Settings";
 import DataQuality from "./pages/DataQuality";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
+import { useUserTheme } from "./hooks/useUserTheme";
 
 const queryClient = new QueryClient();
 
 const App = () => {
+  useUserTheme(); // Load user theme on app start
+
   return (
     <QueryClientProvider client={queryClient}>
       <CentroProvider>
@@ -47,7 +51,8 @@ const App = () => {
             <Route path="/admin/importar-nominas" element={<PayrollImport />} />
             <Route path="/admin/auditoria" element={<Audit />} />
             <Route path="/admin/alertas" element={<Alerts />} />
-            <Route path="/admin/centros" element={<Centres />} />
+            <Route path="/admin/centres" element={<Centres />} />
+            <Route path="/admin/ajustes" element={<Settings />} />
             <Route path="/notificaciones" element={<Notifications />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
