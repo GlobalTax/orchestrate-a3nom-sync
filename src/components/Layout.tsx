@@ -23,7 +23,8 @@ import {
   Building2,
   Shield,
   FileSpreadsheet,
-  AlertTriangle
+  AlertTriangle,
+  History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -147,6 +148,16 @@ const Layout = ({ children }: LayoutProps) => {
                       >
                         <FileSpreadsheet className="h-4 w-4" />
                         <span>Importar Nóminas</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => navigate("/admin/auditoria")}
+                        isActive={isActive("/admin/auditoria")}
+                        className="w-full"
+                      >
+                        <History className="h-4 w-4" />
+                        <span>Auditoría</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>

@@ -52,6 +52,51 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: Database["public"]["Enums"]["audit_action"]
+          created_at: string
+          diff: Json | null
+          id: string
+          ip_address: unknown | null
+          new_data: Json | null
+          old_data: Json | null
+          row_id: string | null
+          table_name: string
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["audit_action"]
+          created_at?: string
+          diff?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          new_data?: Json | null
+          old_data?: Json | null
+          row_id?: string | null
+          table_name: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["audit_action"]
+          created_at?: string
+          diff?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          new_data?: Json | null
+          old_data?: Json | null
+          row_id?: string | null
+          table_name?: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       dq_issues: {
         Row: {
           centro: string | null
@@ -479,6 +524,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "gestor"
+      audit_action: "INSERT" | "UPDATE" | "DELETE"
       dq_severity: "critica" | "alta" | "media" | "baja"
     }
     CompositeTypes: {
@@ -608,6 +654,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gestor"],
+      audit_action: ["INSERT", "UPDATE", "DELETE"],
       dq_severity: ["critica", "alta", "media", "baja"],
     },
   },

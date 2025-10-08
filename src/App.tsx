@@ -14,6 +14,7 @@ import Costs from "./pages/Costs";
 import Users from "./pages/admin/Users";
 import EmployeeMapping from "./pages/admin/EmployeeMapping";
 import PayrollImport from "./pages/admin/PayrollImport";
+import Audit from "./pages/admin/Audit";
 import DataQuality from "./pages/DataQuality";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +40,7 @@ const App = () => {
             <Route path="/admin/users" element={<Users />} />
             <Route path="/admin/mapeo-empleados" element={<EmployeeMapping />} />
             <Route path="/admin/importar-nominas" element={<PayrollImport />} />
+            <Route path="/admin/auditoria" element={<Audit />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
