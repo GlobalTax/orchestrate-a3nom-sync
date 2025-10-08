@@ -22,6 +22,8 @@ interface Centre {
   ciudad: string | null;
   pais: string;
   activo: boolean;
+  orquest_service_id: string | null;
+  orquest_business_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +41,8 @@ const Centres = () => {
     direccion: "",
     ciudad: "",
     pais: "España",
+    orquest_service_id: "",
+    orquest_business_id: "",
   });
 
   // Fetch centres
@@ -120,6 +124,8 @@ const Centres = () => {
       direccion: centre.direccion || "",
       ciudad: centre.ciudad || "",
       pais: centre.pais,
+      orquest_service_id: centre.orquest_service_id || "",
+      orquest_business_id: centre.orquest_business_id || "",
     });
     setIsDialogOpen(true);
   };
@@ -132,6 +138,8 @@ const Centres = () => {
       direccion: "",
       ciudad: "",
       pais: "España",
+      orquest_service_id: "",
+      orquest_business_id: "",
     });
   };
 
@@ -200,7 +208,7 @@ const Centres = () => {
                     <TableHead>Código</TableHead>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Ciudad</TableHead>
-                    <TableHead>País</TableHead>
+                    <TableHead>Orquest</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -211,7 +219,17 @@ const Centres = () => {
                       <TableCell className="font-medium">{centre.codigo}</TableCell>
                       <TableCell>{centre.nombre}</TableCell>
                       <TableCell>{centre.ciudad || "-"}</TableCell>
-                      <TableCell>{centre.pais}</TableCell>
+                      <TableCell>
+                        {centre.orquest_service_id ? (
+                          <Badge variant="outline" className="text-blue-600">
+                            Mapeado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-orange-600">
+                            Sin mapear
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {centre.activo ? (
                           <Badge variant="outline" className="text-green-600">
@@ -319,6 +337,35 @@ const Centres = () => {
                     placeholder="España"
                     value={formData.pais}
                     onChange={(e) => setFormData({ ...formData, pais: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <div className="space-y-1">
+                  <Label className="text-base font-semibold">Mapeo con Orquest</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Vincula este centro con un Service de Orquest
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="orquest_business_id">Business ID (Orquest)</Label>
+                  <Input
+                    id="orquest_business_id"
+                    placeholder="ej: business_123"
+                    value={formData.orquest_business_id}
+                    onChange={(e) => setFormData({ ...formData, orquest_business_id: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="orquest_service_id">Service ID (Orquest)</Label>
+                  <Input
+                    id="orquest_service_id"
+                    placeholder="ej: service_456"
+                    value={formData.orquest_service_id}
+                    onChange={(e) => setFormData({ ...formData, orquest_service_id: e.target.value })}
                   />
                 </div>
               </div>

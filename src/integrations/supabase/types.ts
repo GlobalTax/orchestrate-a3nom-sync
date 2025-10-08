@@ -222,6 +222,8 @@ export type Database = {
           direccion: string | null
           id: string
           nombre: string
+          orquest_business_id: string | null
+          orquest_service_id: string | null
           pais: string | null
           updated_at: string
         }
@@ -233,6 +235,8 @@ export type Database = {
           direccion?: string | null
           id?: string
           nombre: string
+          orquest_business_id?: string | null
+          orquest_service_id?: string | null
           pais?: string | null
           updated_at?: string
         }
@@ -244,6 +248,8 @@ export type Database = {
           direccion?: string | null
           id?: string
           nombre?: string
+          orquest_business_id?: string | null
+          orquest_service_id?: string | null
           pais?: string | null
           updated_at?: string
         }
