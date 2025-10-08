@@ -15,7 +15,9 @@ import Users from "./pages/admin/Users";
 import EmployeeMapping from "./pages/admin/EmployeeMapping";
 import PayrollImport from "./pages/admin/PayrollImport";
 import Audit from "./pages/admin/Audit";
+import Alerts from "./pages/admin/Alerts";
 import DataQuality from "./pages/DataQuality";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +43,8 @@ const App = () => {
             <Route path="/admin/mapeo-empleados" element={<EmployeeMapping />} />
             <Route path="/admin/importar-nominas" element={<PayrollImport />} />
             <Route path="/admin/auditoria" element={<Audit />} />
+            <Route path="/admin/alertas" element={<Alerts />} />
+            <Route path="/notificaciones" element={<Notifications />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -52,6 +52,122 @@ export type Database = {
           },
         ]
       }
+      alert_notifications: {
+        Row: {
+          alert_id: string | null
+          centro: string | null
+          created_at: string
+          destinatario_email: string | null
+          destinatario_user_id: string | null
+          detalles: Json | null
+          email_enviado_at: string | null
+          enviada_email: boolean
+          id: string
+          leida: boolean
+          leida_at: string | null
+          leida_por: string | null
+          mensaje: string
+          severidad: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          alert_id?: string | null
+          centro?: string | null
+          created_at?: string
+          destinatario_email?: string | null
+          destinatario_user_id?: string | null
+          detalles?: Json | null
+          email_enviado_at?: string | null
+          enviada_email?: boolean
+          id?: string
+          leida?: boolean
+          leida_at?: string | null
+          leida_por?: string | null
+          mensaje: string
+          severidad?: string
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          alert_id?: string | null
+          centro?: string | null
+          created_at?: string
+          destinatario_email?: string | null
+          destinatario_user_id?: string | null
+          detalles?: Json | null
+          email_enviado_at?: string | null
+          enviada_email?: boolean
+          id?: string
+          leida?: boolean
+          leida_at?: string | null
+          leida_por?: string | null
+          mensaje?: string
+          severidad?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_notifications_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alerts: {
+        Row: {
+          activo: boolean
+          canal: Json
+          centro: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          destinatarios: Json | null
+          id: string
+          nombre: string
+          periodo_calculo: string
+          tipo: string
+          umbral_operador: string
+          umbral_valor: number | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          canal?: Json
+          centro?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          destinatarios?: Json | null
+          id?: string
+          nombre: string
+          periodo_calculo?: string
+          tipo: string
+          umbral_operador?: string
+          umbral_valor?: number | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          canal?: Json
+          centro?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          destinatarios?: Json | null
+          id?: string
+          nombre?: string
+          periodo_calculo?: string
+          tipo?: string
+          umbral_operador?: string
+          umbral_valor?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: Database["public"]["Enums"]["audit_action"]

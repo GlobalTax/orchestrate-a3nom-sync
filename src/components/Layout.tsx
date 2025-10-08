@@ -24,11 +24,13 @@ import {
   Shield,
   FileSpreadsheet,
   AlertTriangle,
-  History
+  History,
+  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
+import NotificationBell from "@/components/NotificationBell";
 
 interface LayoutProps {
   children: ReactNode;
@@ -160,6 +162,16 @@ const Layout = ({ children }: LayoutProps) => {
                         <span>Auditoría</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => navigate("/admin/alertas")}
+                        isActive={isActive("/admin/alertas")}
+                        className="w-full"
+                      >
+                        <Bell className="h-4 w-4" />
+                        <span>Alertas</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -179,8 +191,9 @@ const Layout = ({ children }: LayoutProps) => {
         </Sidebar>
 
         <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b border-border bg-card px-6 flex items-center">
+          <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
             <SidebarTrigger />
+            <NotificationBell />
           </header>
           <main className="flex-1 overflow-auto">
             {children}
