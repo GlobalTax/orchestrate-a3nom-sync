@@ -26,7 +26,8 @@ import {
   AlertTriangle,
   History,
   Bell,
-  Settings2
+  Settings2,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -184,6 +185,16 @@ const Layout = ({ children }: LayoutProps) => {
                       >
                         <Building2 className="h-4 w-4" />
                         <span>Centros</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => navigate("/admin/sincronizar")}
+                        isActive={isActive("/admin/sincronizar")}
+                        className="w-full"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        <span>Sincronización</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>

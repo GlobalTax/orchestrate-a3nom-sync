@@ -619,6 +619,60 @@ export type Database = {
           },
         ]
       }
+      sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_rows: number | null
+          errors: Json | null
+          id: string
+          inserted_rows: number | null
+          params: Json
+          processed_rows: number | null
+          started_at: string
+          status: string
+          sync_type: string
+          total_rows: number | null
+          trigger_source: string | null
+          triggered_by: string | null
+          updated_rows: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_rows?: number | null
+          errors?: Json | null
+          id?: string
+          inserted_rows?: number | null
+          params?: Json
+          processed_rows?: number | null
+          started_at?: string
+          status?: string
+          sync_type: string
+          total_rows?: number | null
+          trigger_source?: string | null
+          triggered_by?: string | null
+          updated_rows?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_rows?: number | null
+          errors?: Json | null
+          id?: string
+          inserted_rows?: number | null
+          params?: Json
+          processed_rows?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+          total_rows?: number | null
+          trigger_source?: string | null
+          triggered_by?: string | null
+          updated_rows?: number | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           centro: string | null
