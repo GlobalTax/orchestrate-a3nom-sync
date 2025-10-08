@@ -52,6 +52,69 @@ export type Database = {
           },
         ]
       }
+      dq_issues: {
+        Row: {
+          centro: string | null
+          created_at: string
+          detalle: Json | null
+          employee_id: string | null
+          id: string
+          periodo_fin: string
+          periodo_inicio: string
+          resuelto: boolean
+          resuelto_at: string | null
+          resuelto_por: string | null
+          severidad: Database["public"]["Enums"]["dq_severity"]
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          centro?: string | null
+          created_at?: string
+          detalle?: Json | null
+          employee_id?: string | null
+          id?: string
+          periodo_fin: string
+          periodo_inicio: string
+          resuelto?: boolean
+          resuelto_at?: string | null
+          resuelto_por?: string | null
+          severidad?: Database["public"]["Enums"]["dq_severity"]
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          centro?: string | null
+          created_at?: string
+          detalle?: Json | null
+          employee_id?: string | null
+          id?: string
+          periodo_fin?: string
+          periodo_inicio?: string
+          resuelto?: boolean
+          resuelto_at?: string | null
+          resuelto_por?: string | null
+          severidad?: Database["public"]["Enums"]["dq_severity"]
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dq_issues_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dq_issues_resuelto_por_fkey"
+            columns: ["resuelto_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           apellidos: string
@@ -343,6 +406,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      detect_dq_issues: {
+        Args: { p_centro?: string; p_end_date: string; p_start_date: string }
+        Returns: {
+          coste_atipico: number
+          empleado_sin_centro: number
+          issues_detected: number
+          plan_sin_real: number
+          real_sin_plan: number
+        }[]
+      }
       get_centros: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -406,6 +479,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "gestor"
+      dq_severity: "critica" | "alta" | "media" | "baja"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -534,6 +608,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gestor"],
+      dq_severity: ["critica", "alta", "media", "baja"],
     },
   },
 } as const

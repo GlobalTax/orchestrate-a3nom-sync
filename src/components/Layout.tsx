@@ -22,7 +22,8 @@ import {
   LogOut,
   Building2,
   Shield,
-  FileSpreadsheet
+  FileSpreadsheet,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -69,6 +70,7 @@ const Layout = ({ children }: LayoutProps) => {
     { icon: Users, label: "Empleados", path: "/employees" },
     { icon: Calendar, label: "Calendario", path: "/calendar" },
     { icon: DollarSign, label: "Costes", path: "/costs" },
+    { icon: AlertTriangle, label: "Calidad de Datos", path: "/calidad-datos" },
   ];
 
   const isActive = (path: string) => location.pathname === path;
