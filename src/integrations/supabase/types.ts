@@ -166,6 +166,36 @@ export type Database = {
         }
         Relationships: []
       }
+      orquest_services: {
+        Row: {
+          datos_completos: Json | null
+          id: string
+          latitud: number | null
+          longitud: number | null
+          nombre: string
+          updated_at: string | null
+          zona_horaria: string | null
+        }
+        Insert: {
+          datos_completos?: Json | null
+          id: string
+          latitud?: number | null
+          longitud?: number | null
+          nombre: string
+          updated_at?: string | null
+          zona_horaria?: string | null
+        }
+        Update: {
+          datos_completos?: Json | null
+          id?: string
+          latitud?: number | null
+          longitud?: number | null
+          nombre?: string
+          updated_at?: string | null
+          zona_horaria?: string | null
+        }
+        Relationships: []
+      }
       payrolls: {
         Row: {
           coste_total: number | null

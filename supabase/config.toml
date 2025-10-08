@@ -1,1 +1,7 @@
 project_id = "srwnjnrhxzcpftmbbyib"
+
+[functions.orquest_proxy]
+verify_jwt = false
+
+[functions.sync_orquest_services]
+verify_jwt = false
