@@ -792,7 +792,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_user_centres: {
+        Row: {
+          centro_code: string | null
+          centro_id: string | null
+          centro_nombre: string | null
+          orquest_service_id: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       detect_dq_issues: {
@@ -863,6 +873,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      user_can_access_centro: {
+        Args: { _centro_code: string; _user_id: string }
         Returns: boolean
       }
     }
