@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, DollarSign, Pencil, Power, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, DollarSign, Pencil, Power, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface CostCentre {
   id: string;
@@ -209,6 +210,17 @@ const CostCentres = () => {
             Nuevo Centro de Coste
           </Button>
         </div>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>¿Para qué sirven los Centros de Coste?</AlertTitle>
+          <AlertDescription>
+            Los centros de coste de A3Nom se mapean a restaurantes. Un restaurante puede
+            tener múltiples centros de coste si su contabilidad está distribuida. Esto
+            permite consolidar la información de nóminas de diferentes códigos A3 bajo un
+            mismo restaurante en la aplicación.
+          </AlertDescription>
+        </Alert>
 
         <Card>
           <CardHeader>

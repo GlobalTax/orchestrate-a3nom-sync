@@ -12,7 +12,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Building2, Plus, Pencil, Power, PowerOff, Loader2, RefreshCw } from "lucide-react";
+import { Building2, Plus, Pencil, Power, PowerOff, Loader2, RefreshCw, Wifi, Info } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Centre {
   id: string;
@@ -286,35 +288,29 @@ const Centres = () => {
                       <TableCell className="font-medium">{centre.codigo}</TableCell>
                       <TableCell>{centre.nombre}</TableCell>
                       <TableCell>{centre.ciudad || "-"}</TableCell>
-                      <TableCell>
-                        {isOrquestConfigured(centre) ? (
-                          <div className="flex flex-col gap-1">
-                            <Badge variant="outline" className="text-green-600 w-fit">
-                              ✓ Configurado
-                            </Badge>
-                            <div className="text-xs text-muted-foreground space-y-0.5">
-                              <div>Service: <code className="text-blue-600">{centre.orquest_service_id}</code></div>
-                              {centre.orquest_business_id && (
-                                <div>Business: <code className="text-blue-600">{centre.orquest_business_id}</code></div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-orange-600">
-                              ⚠ Sin configurar
-                            </Badge>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleEdit(centre)}
-                              className="text-xs"
-                            >
-                              Configurar →
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {centre.orquest_business_id ? (
+                      <>
+                        <Badge variant="outline" className="text-green-600">
+                          ✓ Business ID
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => navigate(`/admin/services?restaurant=${centre.id}`)}
+                          className="text-xs text-blue-600 hover:text-blue-700"
+                        >
+                          Ver services →
+                        </Button>
+                      </>
+                    ) : (
+                      <Badge variant="outline" className="text-orange-600">
+                        ⚠ Sin configurar
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
                       <TableCell>
                         {centre.activo ? (
                           <Badge variant="outline" className="text-green-600">

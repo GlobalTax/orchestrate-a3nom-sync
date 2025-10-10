@@ -28,6 +28,7 @@ import {
   Bell,
   Settings2,
   RefreshCw,
+  Server,
   Activity
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -180,16 +181,27 @@ const Layout = ({ children }: LayoutProps) => {
                         <span>Alertas</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/centros")}
-                        isActive={isActive("/admin/centros")}
-                        className="w-full"
-                      >
-                        <Building2 className="h-4 w-4" />
-                        <span>Restaurantes</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => navigate("/admin/centros")}
+                  isActive={isActive("/admin/centros")}
+                  className="w-full"
+                >
+                  <Building2 className="h-4 w-4" />
+                  <span>Restaurantes</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => navigate("/admin/services")}
+                  isActive={isActive("/admin/services")}
+                  className="w-full"
+                >
+                  <Server className="h-4 w-4" />
+                  <span>Services Orquest</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/centros-coste")}

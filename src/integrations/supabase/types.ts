@@ -649,6 +649,44 @@ export type Database = {
           },
         ]
       }
+      restaurant_services: {
+        Row: {
+          activo: boolean
+          centro_id: string
+          created_at: string
+          descripcion: string | null
+          id: string
+          orquest_service_id: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          centro_id: string
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          orquest_service_id: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          centro_id?: string
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          orquest_service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_services_centro_id_fkey"
+            columns: ["centro_id"]
+            isOneToOne: false
+            referencedRelation: "centres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           created_at: string | null
@@ -883,6 +921,20 @@ export type Database = {
           horas_planificadas: number
           horas_trabajadas: number
           tasa_absentismo: number
+        }[]
+      }
+      get_metrics_by_service: {
+        Args: {
+          p_centro_code?: string
+          p_end_date: string
+          p_start_date: string
+        }
+        Returns: {
+          empleados_activos: number
+          horas_planificadas: number
+          horas_trabajadas: number
+          service_descripcion: string
+          service_id: string
         }[]
       }
       get_payroll_costs: {

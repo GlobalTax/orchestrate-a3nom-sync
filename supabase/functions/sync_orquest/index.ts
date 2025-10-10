@@ -94,28 +94,83 @@ Deno.serve(async (req) => {
       throw new Error('ORQUEST_BASE_URL and ORQUEST_COOKIE_JSESSIONID must be configured');
     }
 
-    // Fetch centres to sync
-    let centrosQuery = supabaseClient
-      .from('centres')
-      .select('id, codigo, nombre, orquest_service_id, orquest_business_id, activo')
-      .eq('activo', true)
-      .not('orquest_service_id', 'is', null);
+    // Fetch restaurant_services with centre info (N services per restaurant)
+    const { data: restaurantServices, error: rsError } = await supabaseClient
+      .from('restaurant_services')
+      .select(`
+        id,
+        orquest_service_id,
+        descripcion,
+        centro_id,
+        centres:centro_id (
+          id,
+          codigo,
+          nombre,
+          orquest_business_id,
+          activo
+        )
+      `)
+      .eq('activo', true);
 
-    if (centro_code) {
-      centrosQuery = centrosQuery.eq('codigo', centro_code);
+    if (rsError) throw rsError;
+
+    // Group services by centro
+    const centrosMap = new Map<string, {
+      centro: any;
+      serviceIds: string[];
+    }>();
+
+    for (const rs of restaurantServices || []) {
+      const centreData = rs.centres as any;
+      if (!centreData || Array.isArray(centreData) || !centreData.activo) continue;
+      
+      const centroId = centreData.id;
+      if (!centrosMap.has(centroId)) {
+        centrosMap.set(centroId, {
+          centro: centreData,
+          serviceIds: [],
+        });
+      }
+      centrosMap.get(centroId)!.serviceIds.push(rs.orquest_service_id);
     }
 
-    const { data: centros, error: centrosError } = await centrosQuery;
+    // Filter by centro_code if provided and create array
+    let centrosToSync = Array.from(centrosMap.values()).filter(entry => 
+      !centro_code || entry.centro.codigo === centro_code
+    );
 
-    if (centrosError) throw centrosError;
+    // Fallback to centres.orquest_service_id if no restaurant_services found
+    if (centrosToSync.length === 0) {
+      console.log('⚠️ No restaurant_services found, falling back to centres.orquest_service_id');
+      let fallbackQuery = supabaseClient
+        .from('centres')
+        .select('id, codigo, nombre, orquest_service_id, orquest_business_id, activo')
+        .eq('activo', true)
+        .not('orquest_service_id', 'is', null);
 
-    if (!centros || centros.length === 0) {
+      if (centro_code) {
+        fallbackQuery = fallbackQuery.eq('codigo', centro_code);
+      }
+
+      const { data: centres, error: centrosError } = await fallbackQuery;
+      if (centrosError) throw centrosError;
+
+      // Convert to same format
+      centrosToSync = (centres || []).map(c => ({
+        centro: c,
+        serviceIds: [c.orquest_service_id],
+      }));
+    }
+
+    const centros = centrosToSync.map(c => c.centro);
+
+    if (centros.length === 0) {
       throw new Error(centro_code 
         ? `Centro ${centro_code} not found or not configured for Orquest`
         : 'No centres configured for Orquest sync');
     }
 
-    console.log(`📍 Found ${centros.length} centre(s) to sync`);
+    console.log(`📍 Found ${centros.length} restaurant(s) to sync with ${centrosToSync.reduce((sum, c) => sum + c.serviceIds.length, 0)} total services`);
 
     // Create sync log entry
     const { data: logData, error: logError } = await supabaseClient
@@ -135,61 +190,73 @@ Deno.serve(async (req) => {
 
     console.log(`📝 Created sync log: ${logId}`);
 
-    // Execute sync for each centro
+    // Execute sync for each restaurant and its services
     let totalProcessed = 0;
     let totalInserted = 0;
     let totalUpdated = 0;
     let totalErrors = 0;
     const allErrors: any[] = [];
 
-    for (const centro of centros as Centro[]) {
-      console.log(`\n🏢 Syncing centro: ${centro.nombre} (${centro.codigo})`);
+    for (const { centro, serviceIds } of centrosToSync) {
+      console.log(`\n🏪 Syncing restaurant: ${centro.nombre} (${centro.codigo})`);
+      console.log(`   Services: ${serviceIds.join(', ')}`);
 
       if (sync_type === 'employees' || sync_type === 'full') {
-        console.log('👥 Syncing employees...');
-        const result = await syncEmployees(
-          supabaseClient, 
-          orquestBaseUrl, 
-          orquestCookie,
-          centro.orquest_service_id!,
-          centro.orquest_business_id,
-          centro.codigo
-        );
-        totalProcessed += result.total;
-        totalInserted += result.inserted;
-        totalUpdated += result.updated;
-        totalErrors += result.errors;
-        allErrors.push(...result.errorDetails);
+        for (const serviceId of serviceIds) {
+          console.log(`\n   📡 Syncing employees for service ${serviceId}...`);
+          const result = await syncEmployees(
+            supabaseClient,
+            orquestBaseUrl,
+            orquestCookie,
+            serviceId,
+            centro.orquest_business_id,
+            centro.codigo
+          );
+
+          totalProcessed += result.total;
+          totalInserted += result.inserted;
+          totalUpdated += result.updated;
+          totalErrors += result.errors;
+          allErrors.push(...result.errorDetails);
+          
+          console.log(`   ✅ Employees synced for service ${serviceId}: +${result.inserted} inserted, ~${result.updated} updated`);
+        }
       }
 
       if (sync_type === 'schedules' || sync_type === 'full') {
-        console.log('📅 Syncing schedules...');
-        const result = await syncSchedules(
-          supabaseClient, 
-          orquestBaseUrl, 
-          orquestCookie, 
-          startDate, 
-          endDate,
-          centro.orquest_service_id!,
-          centro.orquest_business_id,
-          centro.codigo
-        );
-        totalProcessed += result.total;
-        totalInserted += result.inserted;
-        totalUpdated += result.updated;
-        totalErrors += result.errors;
-        allErrors.push(...result.errorDetails);
+        for (const serviceId of serviceIds) {
+          console.log(`\n   📅 Syncing schedules for service ${serviceId}...`);
+          const result = await syncSchedules(
+            supabaseClient,
+            orquestBaseUrl,
+            orquestCookie,
+            startDate,
+            endDate,
+            serviceId,
+            centro.orquest_business_id,
+            centro.codigo
+          );
+
+          totalProcessed += result.total;
+          totalInserted += result.inserted;
+          totalUpdated += result.updated;
+          totalErrors += result.errors;
+          allErrors.push(...result.errorDetails);
+          
+          console.log(`   ✅ Schedules synced for service ${serviceId}: +${result.inserted} inserted, ~${result.updated} updated`);
+        }
       }
 
       if (sync_type === 'absences' || sync_type === 'full') {
-        console.log('🏖️ Syncing absences...');
+        console.log(`\n   🏖️ Syncing absences for restaurant ${centro.codigo}...`);
+        // Get first service for absences sync (not filtered by service in Orquest)
         const result = await syncAbsences(
-          supabaseClient, 
-          orquestBaseUrl, 
-          orquestCookie, 
-          startDate, 
+          supabaseClient,
+          orquestBaseUrl,
+          orquestCookie,
+          startDate,
           endDate,
-          centro.orquest_service_id!,
+          serviceIds[0],
           centro.orquest_business_id,
           centro.codigo
         );

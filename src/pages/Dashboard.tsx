@@ -12,6 +12,7 @@ import { format, startOfMonth, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 interface HoursMetrics {
   horas_planificadas: number;
@@ -33,6 +34,14 @@ interface DailyData {
   horas_ausencia: number;
 }
 
+interface ServiceMetrics {
+  service_id: string;
+  service_descripcion: string;
+  horas_planificadas: number;
+  horas_trabajadas: number;
+  empleados_activos: number;
+}
+
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
@@ -43,6 +52,7 @@ const Dashboard = () => {
   const [hoursMetrics, setHoursMetrics] = useState<HoursMetrics | null>(null);
   const [costMetrics, setCostMetrics] = useState<CostMetrics | null>(null);
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
+  const [serviceMetrics, setServiceMetrics] = useState<ServiceMetrics[]>([]);
 
   useEffect(() => {
     fetchCentros();
@@ -105,6 +115,16 @@ const Dashboard = () => {
           horas_ausencia: Number(d.horas_ausencia) || 0,
         })) || []
       );
+
+      // Fetch service metrics
+      const { data: servicesData, error: servicesError } = await supabase.rpc("get_metrics_by_service", {
+        p_start_date: startDateStr,
+        p_end_date: endDateStr,
+        p_centro_code: selectedCentro === "all" ? null : selectedCentro,
+      });
+
+      if (servicesError) throw servicesError;
+      setServiceMetrics(servicesData || []);
 
       // Check for high absenteeism and notify
       if (hoursData?.[0]?.tasa_absentismo > 10) {
@@ -383,6 +403,40 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {serviceMetrics.length > 0 && (
+              <Card className="animate-fade-in">
+                <CardHeader>
+                  <CardTitle>Top Services por Horas Planificadas</CardTitle>
+                  <CardDescription>
+                    Distribución de horas por service de Orquest
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {serviceMetrics.slice(0, 5).map((service) => (
+                    <div
+                      key={service.service_id}
+                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium">{service.service_descripcion}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {service.empleados_activos} empleado{service.empleados_activos !== 1 ? "s" : ""} activo{service.empleados_activos !== 1 ? "s" : ""}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="outline" className="font-mono">
+                          {Number(service.horas_planificadas).toLocaleString("es-ES")}h
+                        </Badge>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {Number(service.horas_trabajadas).toLocaleString("es-ES")}h trabajadas
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
       </div>
