@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Building2, Plus, Pencil, Power, PowerOff, Loader2, RefreshCw, Wifi, Info } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Centre {
