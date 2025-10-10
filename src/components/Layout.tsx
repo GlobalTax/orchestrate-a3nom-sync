@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
+import { useQuery } from "@tanstack/react-query";
 import {
   SidebarProvider,
   Sidebar,
@@ -183,35 +184,14 @@ const Layout = ({ children }: LayoutProps) => {
                     </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={() => navigate("/admin/centros")}
-                  isActive={isActive("/admin/centros")}
+                  onClick={() => navigate("/admin/restaurantes")}
+                  isActive={isActive("/admin/restaurantes")}
                   className="w-full"
                 >
                   <Building2 className="h-4 w-4" />
                   <span>Restaurantes</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => navigate("/admin/services")}
-                  isActive={isActive("/admin/services")}
-                  className="w-full"
-                >
-                  <Server className="h-4 w-4" />
-                  <span>Services Orquest</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/centros-coste")}
-                        isActive={isActive("/admin/centros-coste")}
-                        className="w-full"
-                      >
-                        <DollarSign className="h-4 w-4" />
-                        <span>Centros de Coste</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/sincronizar")}
@@ -265,49 +245,14 @@ const Layout = ({ children }: LayoutProps) => {
             <SidebarTrigger />
             
             <div className="flex items-center gap-4">
-              {/* Selector de restaurante - solo si tiene >1 o es admin */}
+              {/* Selector de restaurante mejorado - muestra [codigo] nombre */}
               {(availableCentros.length > 1 || isAdmin) && (
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={selectedCentro || "all"}
-                    onValueChange={(val) => setSelectedCentro(val === "all" ? null : val)}
-                  >
-                    <SelectTrigger className="w-[220px]">
-                      <Building2 className="mr-2 h-4 w-4" />
-                      <SelectValue placeholder="Seleccionar restaurante" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isAdmin && (
-                        <>
-                          <SelectItem value="all">
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-3 w-3" />
-                              Todos los restaurantes
-                            </div>
-                          </SelectItem>
-                          <Separator className="my-1" />
-                        </>
-                      )}
-                      {availableCentros.map((centro) => (
-                        <SelectItem key={centro} value={centro}>
-                          <div className="flex items-center gap-2">
-                            <div className={`h-2 w-2 rounded-full ${
-                              selectedCentro === centro ? 'bg-green-500' : 'bg-gray-400'
-                            }`} />
-                            {centro}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  {/* Indicador de filtro activo */}
-                  {selectedCentro && (
-                    <Badge variant="outline" className="text-xs">
-                      Filtrando: {selectedCentro}
-                    </Badge>
-                  )}
-                </div>
+                <RestaurantSelector 
+                  selectedCentro={selectedCentro}
+                  setSelectedCentro={setSelectedCentro}
+                  availableCentros={availableCentros}
+                  isAdmin={isAdmin}
+                />
               )}
               
               <NotificationBell />
@@ -319,6 +264,74 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </div>
     </SidebarProvider>
+  );
+};
+
+// Component for enhanced restaurant selector
+const RestaurantSelector = ({ selectedCentro, setSelectedCentro, availableCentros, isAdmin }: any) => {
+  const { data: restaurantData } = useQuery({
+    queryKey: ['restaurants_for_selector', availableCentros],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("centres")
+        .select("codigo, nombre, orquest_business_id")
+        .eq("activo", true)
+        .in("codigo", availableCentros);
+      
+      if (error) throw error;
+      
+      return data.reduce((acc, r) => {
+        acc[r.codigo] = r;
+        return acc;
+      }, {} as Record<string, typeof data[0]>);
+    },
+    enabled: availableCentros.length > 0,
+  });
+
+  return (
+    <div className="flex items-center gap-3">
+      <Select
+        value={selectedCentro || "all"}
+        onValueChange={(val) => setSelectedCentro(val === "all" ? null : val)}
+      >
+        <SelectTrigger className="w-[280px]">
+          <Building2 className="mr-2 h-4 w-4" />
+          <SelectValue placeholder="Seleccionar restaurante" />
+        </SelectTrigger>
+        <SelectContent>
+          {isAdmin && (
+            <>
+              <SelectItem value="all">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-3 w-3" />
+                  Todos los restaurantes
+                </div>
+              </SelectItem>
+              <Separator className="my-1" />
+            </>
+          )}
+          {availableCentros.map((centro: string) => (
+            <SelectItem key={centro} value={centro}>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-mono">
+                  {restaurantData?.[centro]?.codigo || centro}
+                </Badge>
+                <span className="text-sm">
+                  {restaurantData?.[centro]?.nombre || centro}
+                </span>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      
+      {selectedCentro && restaurantData?.[selectedCentro] && (
+        <Badge variant="secondary" className="gap-1">
+          <Building2 className="h-3 w-3" />
+          Filtrando: {restaurantData[selectedCentro]?.nombre}
+        </Badge>
+      )}
+    </div>
   );
 };
 

@@ -20,6 +20,7 @@ import Alerts from "./pages/admin/Alerts";
 import Centres from "./pages/admin/Centres";
 import CostCentres from "./pages/admin/CostCentres";
 import Services from "./pages/admin/Services";
+import Restaurantes from "./pages/admin/Restaurantes";
 import Settings from "./pages/admin/Settings";
 import Sync from "./pages/admin/Sync";
 import Health from "./pages/admin/Health";
@@ -55,10 +56,16 @@ const App = () => {
             <Route path="/admin/importar-nominas" element={<PayrollImport />} />
             <Route path="/admin/auditoria" element={<Audit />} />
             <Route path="/admin/alertas" element={<Alerts />} />
+            
+            {/* Nueva página unificada de restaurantes */}
+            <Route path="/admin/restaurantes" element={<Restaurantes />} />
+            
+            {/* Rutas legacy - redirigen a la nueva página unificada */}
             <Route path="/admin/centres" element={<Centres />} />
             <Route path="/admin/centros" element={<Centres />} />
             <Route path="/admin/centros-coste" element={<CostCentres />} />
             <Route path="/admin/services" element={<Services />} />
+            
             <Route path="/admin/ajustes" element={<Settings />} />
             <Route path="/admin/sincronizar" element={<Sync />} />
             <Route path="/admin/health" element={<Health />} />

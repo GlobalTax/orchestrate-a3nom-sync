@@ -1,3 +1,8 @@
+/**
+ * @deprecated Esta página ha sido consolidada en /admin/restaurantes
+ * Se mantiene por compatibilidad pero se recomienda usar el nuevo componente Restaurantes.
+ * Esta página será eliminada en futuras versiones.
+ */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
