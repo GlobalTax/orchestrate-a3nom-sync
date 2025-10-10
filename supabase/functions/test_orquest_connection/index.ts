@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.74.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,50 +12,60 @@ serve(async (req) => {
   }
 
   try {
-    const { baseUrl, jsessionId } = await req.json();
+    const { service_id, business_id } = await req.json();
 
-    if (!baseUrl || !jsessionId) {
+    if (!service_id) {
       return new Response(
-        JSON.stringify({ success: false, message: 'Faltan parámetros requeridos (baseUrl o jsessionId)' }),
+        JSON.stringify({ 
+          success: false, 
+          message: 'Service ID es requerido para probar la conexión' 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Testing Orquest connection to: ${baseUrl}`);
+    console.log(`Testing Orquest connection for service: ${service_id}, business: ${business_id || 'default'}`);
 
-    // Test connection by querying services
-    const response = await fetch(`${baseUrl}/api/services`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `JSESSIONID=${jsessionId}`,
-      },
+    // Create Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Call orquest_proxy to test connection
+    const { data: proxyData, error: proxyError } = await supabaseClient.functions.invoke('orquest_proxy', {
+      body: {
+        path: '/api/employees',
+        method: 'GET',
+        query: { serviceId: service_id },
+        businessId: business_id || undefined
+      }
     });
 
-    console.log(`Orquest API response status: ${response.status}`);
-
-    if (!response.ok) {
+    if (proxyError || !proxyData) {
+      console.error('Orquest proxy error:', proxyError);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: `Error al conectar con Orquest: ${response.status} ${response.statusText}`,
-          status: response.status
+          message: 'Error al conectar con Orquest a través del proxy',
+          error: proxyError?.message
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const data = await response.json();
-    const serviceCount = Array.isArray(data) ? data.length : 0;
+    // Count employees returned
+    const employeesCount = Array.isArray(proxyData) ? proxyData.length : 0;
 
-    console.log(`Successfully connected to Orquest. Services found: ${serviceCount}`);
+    console.log(`Successfully connected to Orquest service ${service_id}. Employees found: ${employeesCount}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `✅ Conexión exitosa (${serviceCount} servicios encontrados)`,
-        serviceCount,
-        services: data
+        message: `✅ Conexión exitosa con service ${service_id} (${employeesCount} empleados)`,
+        employees_count: employeesCount,
+        service_id,
+        business_id
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

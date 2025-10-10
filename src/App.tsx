@@ -18,6 +18,7 @@ import PayrollImport from "./pages/admin/PayrollImport";
 import Audit from "./pages/admin/Audit";
 import Alerts from "./pages/admin/Alerts";
 import Centres from "./pages/admin/Centres";
+import CostCentres from "./pages/admin/CostCentres";
 import Settings from "./pages/admin/Settings";
 import Sync from "./pages/admin/Sync";
 import Health from "./pages/admin/Health";
@@ -54,6 +55,8 @@ const App = () => {
             <Route path="/admin/auditoria" element={<Audit />} />
             <Route path="/admin/alertas" element={<Alerts />} />
             <Route path="/admin/centres" element={<Centres />} />
+            <Route path="/admin/centros" element={<Centres />} />
+            <Route path="/admin/centros-coste" element={<CostCentres />} />
             <Route path="/admin/ajustes" element={<Settings />} />
             <Route path="/admin/sincronizar" element={<Sync />} />
             <Route path="/admin/health" element={<Health />} />

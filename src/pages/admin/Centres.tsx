@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Building2, Plus, Pencil, Power, PowerOff, Loader2 } from "lucide-react";
+import { Building2, Plus, Pencil, Power, PowerOff, Loader2, RefreshCw } from "lucide-react";
 
 interface Centre {
   id: string;
@@ -36,6 +36,7 @@ const Centres = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCentre, setEditingCentre] = useState<Centre | null>(null);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [syncingCentre, setSyncingCentre] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
@@ -173,6 +174,38 @@ const Centres = () => {
     }
   };
 
+  const handleSyncNow = async (centre: Centre) => {
+    if (!centre.orquest_service_id) {
+      toast.error("Este restaurante no tiene configuración de Orquest");
+      return;
+    }
+
+    setSyncingCentre(centre.id);
+    try {
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      const { data, error } = await supabase.functions.invoke('sync_orquest', {
+        body: {
+          sync_type: 'all',
+          start_date: startDate,
+          end_date: endDate,
+          centro_code: centre.codigo,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Sincronización iniciada para ${centre.nombre}`);
+      
+      setTimeout(() => navigate('/admin/sincronizar'), 1500);
+    } catch (error: any) {
+      toast.error("Error al iniciar sincronización: " + error.message);
+    } finally {
+      setSyncingCentre(null);
+    }
+  };
+
   const isOrquestConfigured = (centre: Centre) => {
     return !!(centre.orquest_service_id);
   };
@@ -204,26 +237,26 @@ const Centres = () => {
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Building2 className="h-8 w-8" />
-              Gestión de Centros
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Administra los centros de trabajo de la organización
-            </p>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Building2 className="h-8 w-8" />
+          Gestión de Restaurantes
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Administra los restaurantes de la organización
+        </p>
           </div>
           
           <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
             <Plus className="h-4 w-4" />
-            Nuevo Centro
+            Nuevo Restaurante
           </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Centros Registrados</CardTitle>
-            <CardDescription>
-              {centres.length} centro{centres.length !== 1 ? "s" : ""} en el sistema
+          <CardTitle>Restaurantes Registrados</CardTitle>
+          <CardDescription>
+            {centres.length} restaurante{centres.length !== 1 ? "s" : ""} en el sistema
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -233,7 +266,7 @@ const Centres = () => {
               </div>
             ) : centres.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No hay centros registrados
+                No hay restaurantes registrados
               </div>
             ) : (
               <Table>
@@ -244,7 +277,7 @@ const Centres = () => {
                     <TableHead>Ciudad</TableHead>
                     <TableHead>Orquest</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -256,17 +289,30 @@ const Centres = () => {
                       <TableCell>
                         {isOrquestConfigured(centre) ? (
                           <div className="flex flex-col gap-1">
-                            <Badge variant="outline" className="text-blue-600 w-fit">
-                              Configurado
+                            <Badge variant="outline" className="text-green-600 w-fit">
+                              ✓ Configurado
                             </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              Service: {centre.orquest_service_id}
-                            </span>
+                            <div className="text-xs text-muted-foreground space-y-0.5">
+                              <div>Service: <code className="text-blue-600">{centre.orquest_service_id}</code></div>
+                              {centre.orquest_business_id && (
+                                <div>Business: <code className="text-blue-600">{centre.orquest_business_id}</code></div>
+                              )}
+                            </div>
                           </div>
                         ) : (
-                          <Badge variant="outline" className="text-orange-600">
-                            Sin configurar
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-orange-600">
+                              ⚠ Sin configurar
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEdit(centre)}
+                              className="text-xs"
+                            >
+                              Configurar →
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>
@@ -280,25 +326,39 @@ const Centres = () => {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                      <TableCell>
+                        <div className="flex items-center gap-2">
                           <Button
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => handleEdit(centre)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => toggleActiveMutation.mutate({ id: centre.id, activo: centre.activo })}
                             disabled={toggleActiveMutation.isPending}
+                            title={centre.activo ? "Desactivar restaurante" : "Activar restaurante"}
                           >
                             {centre.activo ? (
                               <PowerOff className="h-4 w-4 text-orange-600" />
                             ) : (
                               <Power className="h-4 w-4 text-green-600" />
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSyncNow(centre)}
+                            disabled={!isOrquestConfigured(centre) || syncingCentre === centre.id}
+                            title="Sincronizar con Orquest ahora"
+                          >
+                            {syncingCentre === centre.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4 text-blue-600" />
                             )}
                           </Button>
                         </div>
@@ -319,10 +379,10 @@ const Centres = () => {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingCentre ? "Editar Centro" : "Crear Nuevo Centro"}
+                {editingCentre ? "Editar Restaurante" : "Crear Nuevo Restaurante"}
               </DialogTitle>
               <DialogDescription>
-                {editingCentre ? "Modifica la información del centro" : "Completa los datos del nuevo centro"}
+                {editingCentre ? "Modifica la información del restaurante" : "Completa los datos del nuevo restaurante"}
               </DialogDescription>
             </DialogHeader>
 

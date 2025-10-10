@@ -46,6 +46,29 @@ Deno.serve(async (req) => {
     
     console.log('🔄 Starting sync:', { sync_type, start_date, end_date, days_back, centro_code });
 
+    // Validate user has permission to sync this centro
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader && centro_code) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabaseClient.auth.getUser(token);
+      
+      if (user) {
+        const { data: userCentres } = await supabaseClient
+          .from('v_user_centres')
+          .select('centro_code')
+          .eq('user_id', user.id);
+        
+        const allowedCentros = userCentres?.map(c => c.centro_code) || [];
+        
+        if (!allowedCentros.includes(centro_code)) {
+          return new Response(
+            JSON.stringify({ error: 'No tienes permisos para sincronizar este restaurante' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
     // Calculate date range
     let startDate: string;
     let endDate: string;

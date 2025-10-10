@@ -30,6 +30,8 @@ import {
   RefreshCw,
   Activity
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -185,7 +187,17 @@ const Layout = ({ children }: LayoutProps) => {
                         className="w-full"
                       >
                         <Building2 className="h-4 w-4" />
-                        <span>Centros</span>
+                        <span>Restaurantes</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => navigate("/admin/centros-coste")}
+                        isActive={isActive("/admin/centros-coste")}
+                        className="w-full"
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        <span>Centros de Coste</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
@@ -241,25 +253,49 @@ const Layout = ({ children }: LayoutProps) => {
             <SidebarTrigger />
             
             <div className="flex items-center gap-4">
-              {/* Centro selector - only show if user has multiple centros or is admin */}
+              {/* Selector de restaurante - solo si tiene >1 o es admin */}
               {(availableCentros.length > 1 || isAdmin) && (
-                <Select
-                  value={selectedCentro || "all"}
-                  onValueChange={(val) => setSelectedCentro(val === "all" ? null : val)}
-                >
-                  <SelectTrigger className="w-[200px]">
-                    <Building2 className="mr-2 h-4 w-4" />
-                    <SelectValue placeholder="Centro activo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isAdmin && <SelectItem value="all">Todos los centros</SelectItem>}
-                    {availableCentros.map((centro) => (
-                      <SelectItem key={centro} value={centro}>
-                        {centro}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={selectedCentro || "all"}
+                    onValueChange={(val) => setSelectedCentro(val === "all" ? null : val)}
+                  >
+                    <SelectTrigger className="w-[220px]">
+                      <Building2 className="mr-2 h-4 w-4" />
+                      <SelectValue placeholder="Seleccionar restaurante" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isAdmin && (
+                        <>
+                          <SelectItem value="all">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-3 w-3" />
+                              Todos los restaurantes
+                            </div>
+                          </SelectItem>
+                          <Separator className="my-1" />
+                        </>
+                      )}
+                      {availableCentros.map((centro) => (
+                        <SelectItem key={centro} value={centro}>
+                          <div className="flex items-center gap-2">
+                            <div className={`h-2 w-2 rounded-full ${
+                              selectedCentro === centro ? 'bg-green-500' : 'bg-gray-400'
+                            }`} />
+                            {centro}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {/* Indicador de filtro activo */}
+                  {selectedCentro && (
+                    <Badge variant="outline" className="text-xs">
+                      Filtrando: {selectedCentro}
+                    </Badge>
+                  )}
+                </div>
               )}
               
               <NotificationBell />

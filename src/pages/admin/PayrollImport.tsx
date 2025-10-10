@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,7 +26,8 @@ import {
   CheckCircle,
   AlertTriangle,
   X,
-  FileText
+  FileText,
+  Building2
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -72,6 +74,7 @@ const OPTIONAL_FIELDS = [
 const PayrollImport = () => {
   const navigate = useNavigate();
   const { isAdmin, userId, loading: roleLoading } = useUserRole();
+  const [selectedCentro, setSelectedCentro] = useState<string | null>(null);
   
   const [step, setStep] = useState<"upload" | "mapping" | "preview" | "importing">("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -88,6 +91,22 @@ const PayrollImport = () => {
   
   const [importProgress, setImportProgress] = useState(0);
   const [importStats, setImportStats] = useState({ loaded: 0, skipped: 0, errors: 0 });
+
+  // Fetch centres for restaurant selector
+  const { data: centres = [] } = useQuery({
+    queryKey: ["centres"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("centres")
+        .select("id, codigo, nombre")
+        .eq("activo", true)
+        .order("nombre");
+      
+      if (error) throw error;
+      return data as { id: string; codigo: string; nombre: string; }[];
+    },
+    enabled: isAdmin,
+  });
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -316,8 +335,14 @@ const PayrollImport = () => {
         status: "processing",
       });
 
-      // Get all employees for ID lookup
-      const { data: employees } = await supabase.from("employees").select("id, employee_id_orquest, codtrabajador_a3nom");
+      // Get all employees for ID lookup (filtered by centro if selected)
+      let employeesQuery = supabase.from("employees").select("id, employee_id_orquest, codtrabajador_a3nom, centro");
+      
+      if (selectedCentro) {
+        employeesQuery = employeesQuery.eq("centro", selectedCentro);
+      }
+      
+      const { data: employees } = await employeesQuery;
       const employeeMap = new Map();
       employees?.forEach(emp => {
         if (emp.employee_id_orquest) employeeMap.set(emp.employee_id_orquest, emp.id);
@@ -549,7 +574,31 @@ const PayrollImport = () => {
                 Arrastra y suelta un archivo XLS, XLSX o CSV
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Restaurant selector */}
+              <div className="space-y-2">
+                <Label htmlFor="centro-select">Restaurante de destino (opcional)</Label>
+                <Select
+                  value={selectedCentro || ""}
+                  onValueChange={(val) => setSelectedCentro(val || null)}
+                >
+                  <SelectTrigger id="centro-select">
+                    <Building2 className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Todos los restaurantes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos los restaurantes</SelectItem>
+                    {centres.map((centro) => (
+                      <SelectItem key={centro.codigo} value={centro.codigo}>
+                        {centro.nombre} ({centro.codigo})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Filtra los empleados durante la importación por restaurante
+                </p>
+              </div>
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
