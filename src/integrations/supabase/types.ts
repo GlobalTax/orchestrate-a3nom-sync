@@ -611,6 +611,44 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurant_cost_centres: {
+        Row: {
+          a3_centro_code: string
+          activo: boolean
+          centro_id: string
+          created_at: string
+          descripcion: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          a3_centro_code: string
+          activo?: boolean
+          centro_id: string
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          a3_centro_code?: string
+          activo?: boolean
+          centro_id?: string
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_cost_centres_centro_id_fkey"
+            columns: ["centro_id"]
+            isOneToOne: false
+            referencedRelation: "centres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           created_at: string | null

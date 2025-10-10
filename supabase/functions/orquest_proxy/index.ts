@@ -14,7 +14,7 @@ serve(async (req) => {
   const startTime = performance.now(); // Medición de latencia
 
   try {
-    const { path, method = 'GET', query = {}, body } = await req.json();
+    const { path, method = 'GET', query = {}, body, businessId } = await req.json();
 
     if (!path) {
       return new Response(
@@ -34,8 +34,12 @@ serve(async (req) => {
       );
     }
 
-    // Build query string
-    const queryString = new URLSearchParams(query).toString();
+    // Build query string with businessId support
+    const queryParams = new URLSearchParams(query);
+    if (businessId) {
+      queryParams.append('businessId', businessId);
+    }
+    const queryString = queryParams.toString();
     const url = `${baseUrl}${path}${queryString ? `?${queryString}` : ''}`;
 
     console.log(`Proxying request to Orquest: ${method} ${url}`);

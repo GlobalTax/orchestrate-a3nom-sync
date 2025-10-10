@@ -10,6 +10,7 @@ interface SyncParams {
   start_date?: string;
   end_date?: string;
   days_back?: number;
+  centro_code?: string; // Optional: sync specific center
 }
 
 interface SyncResult {
@@ -18,6 +19,15 @@ interface SyncResult {
   updated: number;
   errors: number;
   errorDetails: any[];
+}
+
+interface Centro {
+  id: string;
+  codigo: string;
+  nombre: string;
+  orquest_service_id: string | null;
+  orquest_business_id: string | null;
+  activo: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -32,9 +42,9 @@ Deno.serve(async (req) => {
   )
 
   try {
-    const { sync_type, start_date, end_date, days_back } = await req.json() as SyncParams;
+    const { sync_type, start_date, end_date, days_back, centro_code } = await req.json() as SyncParams;
     
-    console.log('🔄 Starting sync:', { sync_type, start_date, end_date, days_back });
+    console.log('🔄 Starting sync:', { sync_type, start_date, end_date, days_back, centro_code });
 
     // Calculate date range
     let startDate: string;
@@ -61,13 +71,36 @@ Deno.serve(async (req) => {
       throw new Error('ORQUEST_BASE_URL and ORQUEST_COOKIE_JSESSIONID must be configured');
     }
 
+    // Fetch centres to sync
+    let centrosQuery = supabaseClient
+      .from('centres')
+      .select('id, codigo, nombre, orquest_service_id, orquest_business_id, activo')
+      .eq('activo', true)
+      .not('orquest_service_id', 'is', null);
+
+    if (centro_code) {
+      centrosQuery = centrosQuery.eq('codigo', centro_code);
+    }
+
+    const { data: centros, error: centrosError } = await centrosQuery;
+
+    if (centrosError) throw centrosError;
+
+    if (!centros || centros.length === 0) {
+      throw new Error(centro_code 
+        ? `Centro ${centro_code} not found or not configured for Orquest`
+        : 'No centres configured for Orquest sync');
+    }
+
+    console.log(`📍 Found ${centros.length} centre(s) to sync`);
+
     // Create sync log entry
     const { data: logData, error: logError } = await supabaseClient
       .from('sync_logs')
       .insert({
         sync_type,
         status: 'running',
-        params: { start_date: startDate, end_date: endDate, days_back },
+        params: { start_date: startDate, end_date: endDate, days_back, centro_code },
         triggered_by: req.headers.get('x-user-id') || null,
         trigger_source: req.headers.get('x-trigger-source') || 'manual',
       })
@@ -79,41 +112,70 @@ Deno.serve(async (req) => {
 
     console.log(`📝 Created sync log: ${logId}`);
 
-    // Execute sync based on type
+    // Execute sync for each centro
     let totalProcessed = 0;
     let totalInserted = 0;
     let totalUpdated = 0;
     let totalErrors = 0;
     const allErrors: any[] = [];
 
-    if (sync_type === 'employees' || sync_type === 'full') {
-      console.log('👥 Syncing employees...');
-      const result = await syncEmployees(supabaseClient, orquestBaseUrl, orquestCookie);
-      totalProcessed += result.total;
-      totalInserted += result.inserted;
-      totalUpdated += result.updated;
-      totalErrors += result.errors;
-      allErrors.push(...result.errorDetails);
-    }
+    for (const centro of centros as Centro[]) {
+      console.log(`\n🏢 Syncing centro: ${centro.nombre} (${centro.codigo})`);
 
-    if (sync_type === 'schedules' || sync_type === 'full') {
-      console.log('📅 Syncing schedules...');
-      const result = await syncSchedules(supabaseClient, orquestBaseUrl, orquestCookie, startDate, endDate);
-      totalProcessed += result.total;
-      totalInserted += result.inserted;
-      totalUpdated += result.updated;
-      totalErrors += result.errors;
-      allErrors.push(...result.errorDetails);
-    }
+      if (sync_type === 'employees' || sync_type === 'full') {
+        console.log('👥 Syncing employees...');
+        const result = await syncEmployees(
+          supabaseClient, 
+          orquestBaseUrl, 
+          orquestCookie,
+          centro.orquest_service_id!,
+          centro.orquest_business_id,
+          centro.codigo
+        );
+        totalProcessed += result.total;
+        totalInserted += result.inserted;
+        totalUpdated += result.updated;
+        totalErrors += result.errors;
+        allErrors.push(...result.errorDetails);
+      }
 
-    if (sync_type === 'absences' || sync_type === 'full') {
-      console.log('🏖️ Syncing absences...');
-      const result = await syncAbsences(supabaseClient, orquestBaseUrl, orquestCookie, startDate, endDate);
-      totalProcessed += result.total;
-      totalInserted += result.inserted;
-      totalUpdated += result.updated;
-      totalErrors += result.errors;
-      allErrors.push(...result.errorDetails);
+      if (sync_type === 'schedules' || sync_type === 'full') {
+        console.log('📅 Syncing schedules...');
+        const result = await syncSchedules(
+          supabaseClient, 
+          orquestBaseUrl, 
+          orquestCookie, 
+          startDate, 
+          endDate,
+          centro.orquest_service_id!,
+          centro.orquest_business_id,
+          centro.codigo
+        );
+        totalProcessed += result.total;
+        totalInserted += result.inserted;
+        totalUpdated += result.updated;
+        totalErrors += result.errors;
+        allErrors.push(...result.errorDetails);
+      }
+
+      if (sync_type === 'absences' || sync_type === 'full') {
+        console.log('🏖️ Syncing absences...');
+        const result = await syncAbsences(
+          supabaseClient, 
+          orquestBaseUrl, 
+          orquestCookie, 
+          startDate, 
+          endDate,
+          centro.orquest_service_id!,
+          centro.orquest_business_id,
+          centro.codigo
+        );
+        totalProcessed += result.total;
+        totalInserted += result.inserted;
+        totalUpdated += result.updated;
+        totalErrors += result.errors;
+        allErrors.push(...result.errorDetails);
+      }
     }
 
     // Update sync log with results
@@ -145,6 +207,7 @@ Deno.serve(async (req) => {
           inserted: totalInserted,
           updated: totalUpdated,
           errors: totalErrors,
+          centres_synced: centros.length,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -180,13 +243,21 @@ Deno.serve(async (req) => {
 async function syncEmployees(
   supabase: any,
   baseUrl: string,
-  cookie: string
+  cookie: string,
+  serviceId: string,
+  businessId: string | null,
+  centroCode: string
 ): Promise<SyncResult> {
   const result: SyncResult = { total: 0, inserted: 0, updated: 0, errors: 0, errorDetails: [] };
 
   try {
-    // Fetch employees from Orquest
-    const response = await fetch(`${baseUrl}/api/employees`, {
+    // Build API URL with serviceId and optionally businessId
+    let apiUrl = `${baseUrl}/api/employees?serviceId=${serviceId}`;
+    if (businessId) {
+      apiUrl += `&businessId=${businessId}`;
+    }
+
+    const response = await fetch(apiUrl, {
       headers: {
         'Cookie': `JSESSIONID=${cookie}`,
         'Content-Type': 'application/json',
@@ -200,7 +271,7 @@ async function syncEmployees(
     const orquestEmployees = await response.json();
     result.total = orquestEmployees.length;
 
-    console.log(`Found ${result.total} employees in Orquest`);
+    console.log(`  Found ${result.total} employees for ${centroCode}`);
 
     // Process each employee
     for (const emp of orquestEmployees) {
@@ -212,7 +283,7 @@ async function syncEmployees(
             nombre: emp.firstName || emp.name || 'Sin nombre',
             apellidos: emp.lastName || emp.surname || '',
             email: emp.email || null,
-            centro: emp.serviceId || null,
+            centro: centroCode,
             fecha_alta: emp.startDate ? new Date(emp.startDate).toISOString().split('T')[0] : null,
             fecha_baja: emp.endDate ? new Date(emp.endDate).toISOString().split('T')[0] : null,
           }, { onConflict: 'employee_id_orquest' });
@@ -221,6 +292,7 @@ async function syncEmployees(
           result.errors++;
           result.errorDetails.push({
             type: 'employee',
+            centro: centroCode,
             id: emp.id,
             error: error.message,
           });
@@ -232,14 +304,19 @@ async function syncEmployees(
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         result.errorDetails.push({
           type: 'employee',
+          centro: centroCode,
           id: emp.id,
           error: errorMessage,
         });
       }
     }
   } catch (error) {
-    console.error('Error syncing employees:', error);
-    throw error;
+    console.error(`  Error syncing employees for ${centroCode}:`, error);
+    result.errorDetails.push({
+      type: 'employee_sync',
+      centro: centroCode,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 
   return result;
@@ -250,21 +327,26 @@ async function syncSchedules(
   baseUrl: string,
   cookie: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  serviceId: string,
+  businessId: string | null,
+  centroCode: string
 ): Promise<SyncResult> {
   const result: SyncResult = { total: 0, inserted: 0, updated: 0, errors: 0, errorDetails: [] };
 
   try {
-    // Fetch assignments from Orquest
-    const response = await fetch(
-      `${baseUrl}/api/assignments?startDate=${startDate}&endDate=${endDate}`,
-      {
-        headers: {
-          'Cookie': `JSESSIONID=${cookie}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    // Build API URL with serviceId, businessId, and date range
+    let apiUrl = `${baseUrl}/api/assignments?startDate=${startDate}&endDate=${endDate}&serviceId=${serviceId}`;
+    if (businessId) {
+      apiUrl += `&businessId=${businessId}`;
+    }
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Cookie': `JSESSIONID=${cookie}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`Orquest API error: ${response.status}`);
@@ -273,12 +355,13 @@ async function syncSchedules(
     const assignments = await response.json();
     result.total = assignments.length;
 
-    console.log(`Found ${result.total} assignments in Orquest`);
+    console.log(`  Found ${result.total} assignments for ${centroCode}`);
 
-    // Get employee mapping
+    // Get employee mapping for this centro
     const { data: employees } = await supabase
       .from('employees')
-      .select('id, employee_id_orquest');
+      .select('id, employee_id_orquest')
+      .eq('centro', centroCode);
 
     const employeeMap = new Map(employees?.map((e: any) => [e.employee_id_orquest, e.id]) || []);
 
@@ -291,6 +374,7 @@ async function syncSchedules(
           result.errors++;
           result.errorDetails.push({
             type: 'schedule',
+            centro: centroCode,
             id: assignment.id,
             error: `Employee not found: ${assignment.employeeId}`,
           });
@@ -309,7 +393,7 @@ async function syncSchedules(
             hora_inicio: startTime.toISOString().split('T')[1].substring(0, 8),
             hora_fin: endTime.toISOString().split('T')[1].substring(0, 8),
             horas_planificadas: hours,
-            service_id: assignment.serviceId || null,
+            service_id: serviceId,
             tipo_asignacion: assignment.type || null,
           }, { onConflict: 'employee_id,fecha,service_id' });
 
@@ -317,6 +401,7 @@ async function syncSchedules(
           result.errors++;
           result.errorDetails.push({
             type: 'schedule',
+            centro: centroCode,
             id: assignment.id,
             error: error.message,
           });
@@ -328,14 +413,19 @@ async function syncSchedules(
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         result.errorDetails.push({
           type: 'schedule',
+          centro: centroCode,
           id: assignment.id,
           error: errorMessage,
         });
       }
     }
   } catch (error) {
-    console.error('Error syncing schedules:', error);
-    throw error;
+    console.error(`  Error syncing schedules for ${centroCode}:`, error);
+    result.errorDetails.push({
+      type: 'schedule_sync',
+      centro: centroCode,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 
   return result;
@@ -346,21 +436,26 @@ async function syncAbsences(
   baseUrl: string,
   cookie: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  serviceId: string,
+  businessId: string | null,
+  centroCode: string
 ): Promise<SyncResult> {
   const result: SyncResult = { total: 0, inserted: 0, updated: 0, errors: 0, errorDetails: [] };
 
   try {
-    // Fetch absences from Orquest
-    const response = await fetch(
-      `${baseUrl}/api/absences?startDate=${startDate}&endDate=${endDate}`,
-      {
-        headers: {
-          'Cookie': `JSESSIONID=${cookie}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    // Build API URL with serviceId, businessId, and date range
+    let apiUrl = `${baseUrl}/api/absences?startDate=${startDate}&endDate=${endDate}&serviceId=${serviceId}`;
+    if (businessId) {
+      apiUrl += `&businessId=${businessId}`;
+    }
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Cookie': `JSESSIONID=${cookie}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`Orquest API error: ${response.status}`);
@@ -369,12 +464,13 @@ async function syncAbsences(
     const absences = await response.json();
     result.total = absences.length;
 
-    console.log(`Found ${result.total} absences in Orquest`);
+    console.log(`  Found ${result.total} absences for ${centroCode}`);
 
-    // Get employee mapping
+    // Get employee mapping for this centro
     const { data: employees } = await supabase
       .from('employees')
-      .select('id, employee_id_orquest');
+      .select('id, employee_id_orquest')
+      .eq('centro', centroCode);
 
     const employeeMap = new Map(employees?.map((e: any) => [e.employee_id_orquest, e.id]) || []);
 
@@ -387,6 +483,7 @@ async function syncAbsences(
           result.errors++;
           result.errorDetails.push({
             type: 'absence',
+            centro: centroCode,
             id: absence.id,
             error: `Employee not found: ${absence.employeeId}`,
           });
@@ -407,6 +504,7 @@ async function syncAbsences(
           result.errors++;
           result.errorDetails.push({
             type: 'absence',
+            centro: centroCode,
             id: absence.id,
             error: error.message,
           });
@@ -418,14 +516,19 @@ async function syncAbsences(
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         result.errorDetails.push({
           type: 'absence',
+          centro: centroCode,
           id: absence.id,
           error: errorMessage,
         });
       }
     }
   } catch (error) {
-    console.error('Error syncing absences:', error);
-    throw error;
+    console.error(`  Error syncing absences for ${centroCode}:`, error);
+    result.errorDetails.push({
+      type: 'absence_sync',
+      centro: centroCode,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 
   return result;

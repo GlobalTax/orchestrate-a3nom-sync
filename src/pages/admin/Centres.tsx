@@ -35,6 +35,7 @@ const Centres = () => {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCentre, setEditingCentre] = useState<Centre | null>(null);
+  const [testingConnection, setTestingConnection] = useState(false);
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
@@ -143,6 +144,39 @@ const Centres = () => {
     });
   };
 
+  const testOrquestConnection = async () => {
+    if (!formData.orquest_service_id) {
+      toast.error("Debes especificar un Service ID para probar la conexión");
+      return;
+    }
+
+    setTestingConnection(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('test_orquest_connection', {
+        body: {
+          service_id: formData.orquest_service_id,
+          business_id: formData.orquest_business_id || null,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(`Conexión exitosa! ${data.employees_count || 0} empleados encontrados`);
+      } else {
+        toast.error("Error al conectar con Orquest");
+      }
+    } catch (error: any) {
+      toast.error("Error al probar conexión: " + error.message);
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  const isOrquestConfigured = (centre: Centre) => {
+    return !!(centre.orquest_service_id);
+  };
+
   if (roleLoading) {
     return (
       <Layout>
@@ -220,13 +254,18 @@ const Centres = () => {
                       <TableCell>{centre.nombre}</TableCell>
                       <TableCell>{centre.ciudad || "-"}</TableCell>
                       <TableCell>
-                        {centre.orquest_service_id ? (
-                          <Badge variant="outline" className="text-blue-600">
-                            Mapeado
-                          </Badge>
+                        {isOrquestConfigured(centre) ? (
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className="text-blue-600 w-fit">
+                              Configurado
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              Service: {centre.orquest_service_id}
+                            </span>
+                          </div>
                         ) : (
                           <Badge variant="outline" className="text-orange-600">
-                            Sin mapear
+                            Sin configurar
                           </Badge>
                         )}
                       </TableCell>
@@ -360,14 +399,36 @@ const Centres = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="orquest_service_id">Service ID (Orquest)</Label>
+                  <Label htmlFor="orquest_service_id">Service ID (Orquest) *</Label>
                   <Input
                     id="orquest_service_id"
                     placeholder="ej: service_456"
                     value={formData.orquest_service_id}
                     onChange={(e) => setFormData({ ...formData, orquest_service_id: e.target.value })}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Requerido para sincronización con Orquest
+                  </p>
                 </div>
+
+                {formData.orquest_service_id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={testOrquestConnection}
+                    disabled={testingConnection}
+                    className="w-full"
+                  >
+                    {testingConnection ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Probando conexión...
+                      </>
+                    ) : (
+                      "Probar Conexión con Orquest"
+                    )}
+                  </Button>
+                )}
               </div>
 
               <DialogFooter>

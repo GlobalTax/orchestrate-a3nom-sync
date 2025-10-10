@@ -36,6 +36,7 @@ export default function Sync() {
   
   const [syncType, setSyncType] = useState<'employees' | 'schedules' | 'absences' | 'full'>('full');
   const [daysBack, setDaysBack] = useState('7');
+  const [selectedCentro, setSelectedCentro] = useState<string>('all');
   const [selectedLog, setSelectedLog] = useState<SyncLog | null>(null);
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
 
@@ -45,6 +46,22 @@ export default function Sync() {
       toast.error("No tienes permisos para acceder a esta página");
     }
   }, [isAdmin, roleLoading, navigate]);
+
+  // Fetch centres for selector
+  const { data: centros = [] } = useQuery({
+    queryKey: ['centres'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('centres')
+        .select('id, codigo, nombre, activo, orquest_service_id')
+        .eq('activo', true)
+        .not('orquest_service_id', 'is', null)
+        .order('codigo');
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Fetch sync logs
   const { data: logs, isLoading: logsLoading } = useQuery({
@@ -64,7 +81,7 @@ export default function Sync() {
 
   // Execute sync mutation
   const executeSyncMutation = useMutation({
-    mutationFn: async (params: { sync_type: string; days_back?: number }) => {
+    mutationFn: async (params: { sync_type: string; days_back?: number; centro_code?: string }) => {
       const { data, error } = await supabase.functions.invoke('sync_orquest', {
         body: params,
       });
@@ -82,10 +99,16 @@ export default function Sync() {
   });
 
   const handleExecuteSync = () => {
-    executeSyncMutation.mutate({
+    const params: any = {
       sync_type: syncType,
       days_back: parseInt(daysBack),
-    });
+    };
+    
+    if (selectedCentro !== 'all') {
+      params.centro_code = selectedCentro;
+    }
+
+    executeSyncMutation.mutate(params);
   };
 
   const getStatusBadge = (status: string) => {
@@ -209,7 +232,24 @@ export default function Sync() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="centro">Centro</Label>
+                <Select value={selectedCentro} onValueChange={setSelectedCentro}>
+                  <SelectTrigger id="centro">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los centros</SelectItem>
+                    {centros.map((centro) => (
+                      <SelectItem key={centro.codigo} value={centro.codigo}>
+                        {centro.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="syncType">Tipo de Sincronización</Label>
                 <Select value={syncType} onValueChange={(val: any) => setSyncType(val)}>
