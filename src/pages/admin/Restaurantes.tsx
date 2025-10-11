@@ -127,11 +127,10 @@ const Restaurantes = () => {
   const { data: centres = [], isLoading: loadingCentres, error: centresError } = useQuery({
     queryKey: ["restaurants_with_franchisees"],
     queryFn: async () => {
-      console.info("[Restaurantes] Fetching from v_restaurants_with_franchisees");
+      console.info("[Restaurantes] Fetching via RPC get_restaurants_with_franchisees");
       const { data, error } = await supabase
-        .from("v_restaurants_with_franchisees")
-        .select("id, site_number, name, address, city, state, country, postal_code, seating_capacity, square_meters, opening_date, franchisee_id, franchisee_name, franchisee_email, company_tax_id")
-        .order("name");
+        .rpc("get_restaurants_with_franchisees");
+      
       if (error) {
         console.error("[Restaurantes] Error fetching restaurants:", error);
         toast.error("Error al cargar restaurantes: " + error.message);

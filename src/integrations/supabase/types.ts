@@ -1121,6 +1121,28 @@ export type Database = {
           costes_reales: number
         }[]
       }
+      get_restaurants_with_franchisees: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          address: string
+          city: string
+          company_tax_id: string
+          country: string
+          created_at: string
+          franchisee_email: string
+          franchisee_id: string
+          franchisee_name: string
+          id: string
+          name: string
+          opening_date: string
+          postal_code: string
+          seating_capacity: string
+          site_number: string
+          square_meters: string
+          state: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
