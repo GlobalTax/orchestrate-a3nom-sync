@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useCentro } from "@/contexts/CentroContext";
 import Layout from "@/components/Layout";
-import { RestaurantFilterGuard } from "@/components/RestaurantFilterGuard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
@@ -45,10 +43,11 @@ interface ServiceMetrics {
 }
 
 const Dashboard = () => {
-  const { selectedCentro } = useCentro();
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
+  const [selectedCentro, setSelectedCentro] = useState<string>("all");
+  const [centros, setCentros] = useState<string[]>([]);
   
   const [hoursMetrics, setHoursMetrics] = useState<HoursMetrics | null>(null);
   const [costMetrics, setCostMetrics] = useState<CostMetrics | null>(null);
@@ -56,8 +55,23 @@ const Dashboard = () => {
   const [serviceMetrics, setServiceMetrics] = useState<ServiceMetrics[]>([]);
 
   useEffect(() => {
+    fetchCentros();
+  }, []);
+
+  useEffect(() => {
     fetchMetrics();
   }, [startDate, endDate, selectedCentro]);
+
+  const fetchCentros = async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_centros");
+      if (error) throw error;
+      setCentros(data?.map((c: { centro: string }) => c.centro) || []);
+    } catch (error: any) {
+      console.error("Error fetching centros:", error);
+      toast.error("Error al cargar centros");
+    }
+  };
 
   const fetchMetrics = async () => {
     try {
@@ -161,8 +175,7 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <RestaurantFilterGuard>
-        <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Dashboard de Métricas</h1>
@@ -172,6 +185,20 @@ const Dashboard = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
+            <Select value={selectedCentro} onValueChange={setSelectedCentro}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Seleccionar centro" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los centros</SelectItem>
+                {centros.map((centro) => (
+                  <SelectItem key={centro} value={centro}>
+                    {centro}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
@@ -412,8 +439,7 @@ const Dashboard = () => {
             )}
           </>
         )}
-        </div>
-      </RestaurantFilterGuard>
+      </div>
     </Layout>
   );
 };

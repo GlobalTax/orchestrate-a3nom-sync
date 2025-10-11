@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useCentro } from "@/contexts/CentroContext";
 import Layout from "@/components/Layout";
-import { RestaurantFilterGuard } from "@/components/RestaurantFilterGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,7 +34,6 @@ interface Employee {
 const Employees = () => {
   const navigate = useNavigate();
   const { isAdmin } = useUserRole();
-  const { selectedCentro: globalSelectedCentro } = useCentro();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCentro, setSelectedCentro] = useState<string>("all");
@@ -46,20 +43,14 @@ const Employees = () => {
   useEffect(() => {
     fetchEmployees();
     fetchCentros();
-  }, [globalSelectedCentro, isAdmin]);
+  }, []);
 
   const fetchEmployees = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from("employees")
-        .select("*");
-
-      // Apply restaurant filter if not admin and restaurant is selected
-      if (!isAdmin && globalSelectedCentro) {
-        query = query.eq("centro", globalSelectedCentro);
-      }
-
-      const { data, error } = await query.order("apellidos", { ascending: true });
+        .select("*")
+        .order("apellidos", { ascending: true });
 
       if (error) throw error;
       setEmployees(data || []);
@@ -132,8 +123,7 @@ const Employees = () => {
 
   return (
     <Layout>
-      <RestaurantFilterGuard>
-        <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Empleados</h1>
@@ -245,8 +235,7 @@ const Employees = () => {
             )}
           </CardContent>
         </Card>
-        </div>
-      </RestaurantFilterGuard>
+      </div>
     </Layout>
   );
 };

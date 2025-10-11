@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCentro } from "@/contexts/CentroContext";
 import Layout from "@/components/Layout";
-import { RestaurantFilterGuard } from "@/components/RestaurantFilterGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -64,7 +63,7 @@ interface CalendarEventData extends CalendarEvent {
   resource?: { color: string };
 }
 
-const CalendarPage = () => {
+const Calendar = () => {
   const { isAdmin } = useUserRole();
   const { selectedCentro } = useCentro();
   const [view, setView] = useState<View>("month");
@@ -406,8 +405,7 @@ const CalendarPage = () => {
 
   return (
     <Layout>
-      <RestaurantFilterGuard>
-        <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Calendario de Planificación</h1>
@@ -785,9 +783,8 @@ const CalendarPage = () => {
           </CardContent>
         </Card>
       </div>
-      </RestaurantFilterGuard>
     </Layout>
   );
 };
 
-export default CalendarPage;
+export default Calendar;

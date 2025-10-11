@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCentro } from "@/contexts/CentroContext";
 import Layout from "@/components/Layout";
-import { RestaurantFilterGuard } from "@/components/RestaurantFilterGuard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -145,8 +144,7 @@ const Costs = () => {
 
   return (
     <Layout>
-      <RestaurantFilterGuard>
-        <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Análisis de Costes</h1>
@@ -457,8 +455,7 @@ const Costs = () => {
             </div>
           </>
         )}
-        </div>
-      </RestaurantFilterGuard>
+      </div>
     </Layout>
   );
 };

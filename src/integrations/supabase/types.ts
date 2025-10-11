@@ -879,17 +879,6 @@ export type Database = {
         }
         Relationships: []
       }
-      v_user_restaurants: {
-        Row: {
-          orquest_service_id: string | null
-          restaurant_code: string | null
-          restaurant_id: string | null
-          restaurant_name: string | null
-          role: Database["public"]["Enums"]["app_role"] | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
     }
     Functions: {
       detect_dq_issues: {
