@@ -144,6 +144,16 @@ const Layout = ({ children }: LayoutProps) => {
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
+                        onClick={() => navigate("/admin/permisos")}
+                        isActive={isActive("/admin/permisos")}
+                        className="w-full"
+                      >
+                        <Shield className="h-4 w-4" />
+                        <span>Gestión de Permisos</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
                         onClick={() => navigate("/admin/mapeo-empleados")}
                         isActive={isActive("/admin/mapeo-empleados")}
                         className="w-full"

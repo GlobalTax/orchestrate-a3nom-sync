@@ -13,6 +13,7 @@ import EmployeeDetail from "./pages/EmployeeDetail";
 import Calendar from "./pages/Calendar";
 import Costs from "./pages/Costs";
 import Users from "./pages/admin/Users";
+import UserPermissions from "./pages/admin/UserPermissions";
 import EmployeeMapping from "./pages/admin/EmployeeMapping";
 import PayrollImport from "./pages/admin/PayrollImport";
 import Audit from "./pages/admin/Audit";
@@ -52,6 +53,7 @@ const App = () => {
             <Route path="/costs" element={<Costs />} />
             <Route path="/calidad-datos" element={<DataQuality />} />
             <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/permisos" element={<UserPermissions />} />
             <Route path="/admin/mapeo-empleados" element={<EmployeeMapping />} />
             <Route path="/admin/importar-nominas" element={<PayrollImport />} />
             <Route path="/admin/auditoria" element={<Audit />} />
