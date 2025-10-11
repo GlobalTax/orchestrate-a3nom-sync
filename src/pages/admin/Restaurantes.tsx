@@ -124,14 +124,20 @@ const Restaurantes = () => {
   });
 
   // Fetch centres/restaurants with franchisee info
-  const { data: centres = [], isLoading: loadingCentres } = useQuery({
+  const { data: centres = [], isLoading: loadingCentres, error: centresError } = useQuery({
     queryKey: ["restaurants_with_franchisees"],
     queryFn: async () => {
+      console.info("[Restaurantes] Fetching from v_restaurants_with_franchisees");
       const { data, error } = await supabase
         .from("v_restaurants_with_franchisees")
-        .select("*")
+        .select("id, site_number, name, address, city, state, country, postal_code, seating_capacity, square_meters, opening_date, franchisee_id, franchisee_name, franchisee_email, company_tax_id")
         .order("name");
-      if (error) throw error;
+      if (error) {
+        console.error("[Restaurantes] Error fetching restaurants:", error);
+        toast.error("Error al cargar restaurantes: " + error.message);
+        throw error;
+      }
+      console.info("[Restaurantes] Fetched restaurants count:", data?.length || 0);
       return (data || []).map(r => ({
         id: r.id,
         codigo: r.site_number || r.id,
@@ -155,20 +161,28 @@ const Restaurantes = () => {
       })) as RestaurantWithFranchisee[];
     },
     enabled: isAdmin,
+    retry: 2,
   });
 
   // Fetch franchisees
   const { data: franchisees = [], isLoading: loadingFranchisees } = useQuery({
     queryKey: ["franchisees"],
     queryFn: async () => {
+      console.info("[Restaurantes] Fetching franchisees");
       const { data, error } = await supabase
         .from("franchisees")
         .select("*")
         .order("name");
-      if (error) throw error;
+      if (error) {
+        console.error("[Restaurantes] Error fetching franchisees:", error);
+        toast.error("Error al cargar franquiciados: " + error.message);
+        throw error;
+      }
+      console.info("[Restaurantes] Fetched franchisees count:", data?.length || 0);
       return data as Franchisee[];
     },
     enabled: isAdmin,
+    retry: 2,
   });
 
   // Fetch services count per restaurant
@@ -180,7 +194,11 @@ const Restaurantes = () => {
         .select("centro_id")
         .eq("activo", true);
       
-      if (error) throw error;
+      if (error) {
+        console.error("[Restaurantes] Error fetching services count:", error);
+        toast.error("Error al contar servicios: " + error.message);
+        throw error;
+      }
       
       return data.reduce((acc, curr) => {
         acc[curr.centro_id] = (acc[curr.centro_id] || 0) + 1;
@@ -188,6 +206,7 @@ const Restaurantes = () => {
       }, {} as Record<string, number>);
     },
     enabled: isAdmin,
+    retry: 2,
   });
 
   // Fetch all services
@@ -204,10 +223,15 @@ const Restaurantes = () => {
           )
         `)
         .order("created_at", { ascending: false });
-      if (error) throw error;
+      if (error) {
+        console.error("[Restaurantes] Error fetching services:", error);
+        toast.error("Error al cargar servicios: " + error.message);
+        throw error;
+      }
       return data as RestaurantService[];
     },
     enabled: isAdmin,
+    retry: 2,
   });
 
   // Fetch cost centres
@@ -224,10 +248,15 @@ const Restaurantes = () => {
           )
         `)
         .order("created_at", { ascending: false });
-      if (error) throw error;
+      if (error) {
+        console.error("[Restaurantes] Error fetching cost centres:", error);
+        toast.error("Error al cargar centros de coste: " + error.message);
+        throw error;
+      }
       return data as CostCentre[];
     },
     enabled: isAdmin,
+    retry: 2,
   });
 
   // Fetch users with their roles
@@ -238,13 +267,21 @@ const Restaurantes = () => {
         .from("profiles")
         .select("*");
       
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error("[Restaurantes] Error fetching profiles:", profilesError);
+        toast.error("Error al cargar perfiles: " + profilesError.message);
+        throw profilesError;
+      }
 
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*");
       
-      if (rolesError) throw rolesError;
+      if (rolesError) {
+        console.error("[Restaurantes] Error fetching user roles:", rolesError);
+        toast.error("Error al cargar roles: " + rolesError.message);
+        throw rolesError;
+      }
 
       return (profiles || []).map(profile => ({
         id: profile.id,
@@ -255,6 +292,7 @@ const Restaurantes = () => {
       }));
     },
     enabled: isAdmin,
+    retry: 2,
   });
 
   // Group franchisees by centro
@@ -697,6 +735,20 @@ const Restaurantes = () => {
             </p>
           </div>
         </div>
+
+        {/* Diagnostic Info (Dev Mode) */}
+        {process.env.NODE_ENV === 'development' && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Diagnóstico del Sistema</AlertTitle>
+            <AlertDescription className="space-y-1">
+              <div>✅ Vista v_restaurants_with_franchisees: {centres.length} restaurantes cargados</div>
+              <div>✅ Tabla franchisees: {franchisees.length} franquiciados</div>
+              <div>✅ Services: {Object.keys(servicesCount).length} restaurantes con services</div>
+              {centresError && <div className="text-destructive">❌ Error en restaurantes: {(centresError as any).message}</div>}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>

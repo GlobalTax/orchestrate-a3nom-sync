@@ -247,6 +247,25 @@ export default function RestaurantImport() {
   };
 
   const performImport = async () => {
+    // Validación previa: asegurar que hay columnas mapeadas válidas
+    const mappedColumns = Object.keys(columnMapping);
+    if (mappedColumns.length === 0) {
+      toast.error("No hay columnas mapeadas. Mapea al menos site_number y nombre.");
+      return;
+    }
+    
+    const hasSiteNumber = Object.values(columnMapping).includes('site_number');
+    const hasName = Object.values(columnMapping).includes('nombre');
+    
+    if (!hasSiteNumber || !hasName) {
+      toast.error("Campos requeridos: site_number y nombre deben estar mapeados.");
+      return;
+    }
+
+    console.info("[RestaurantImport] Iniciando importación usando tablas: Restaurants, franchisees");
+    console.info("[RestaurantImport] Columnas mapeadas:", columnMapping);
+    console.info("[RestaurantImport] Total filas a procesar:", csvData.length);
+    
     setImporting(true);
     setImportProgress(0);
 
@@ -283,7 +302,7 @@ export default function RestaurantImport() {
       const franchiseeIdMap = new Map<string, string>();
 
       if (uniqueFranchisees.length > 0) {
-        console.log('🔄 Upserting franquiciados:', uniqueFranchisees.length);
+        console.info('[RestaurantImport] 🔄 Upserting franquiciados a tabla "franchisees":', uniqueFranchisees.length);
         
         const { data: franchisees, error: franchiseeError } = await supabase
           .from('franchisees')
@@ -291,7 +310,7 @@ export default function RestaurantImport() {
           .select('id, email');
 
         if (franchiseeError) {
-          console.error('Error upserting franchisees:', franchiseeError);
+          console.error('[RestaurantImport] ❌ Error upserting franchisees:', franchiseeError);
           throw franchiseeError;
         }
 
@@ -299,10 +318,11 @@ export default function RestaurantImport() {
           franchiseeIdMap.set(f.email, f.id);
         });
         
-        console.log('✅ Franquiciados procesados:', franchisees?.length);
+        console.info('[RestaurantImport] ✅ Franquiciados procesados:', franchisees?.length);
       }
 
       // PASO 2: Procesar restaurantes con franchisee_id
+      console.info('[RestaurantImport] 🔄 Procesando restaurantes hacia tabla "Restaurants"');
       const batchSize = 50;
       const batches = Math.ceil(csvData.length / batchSize);
 
@@ -390,9 +410,15 @@ export default function RestaurantImport() {
       setImporting(false);
       setStep(4);
       
+      console.info('[RestaurantImport] ✅ Importación completada:', {
+        insertados: result.inserted,
+        actualizados: result.updated,
+        omitidos: result.skipped,
+        errores: result.errors.length
+      });
       toast.success(`Importación completada: ${result.inserted} insertados, ${result.updated} actualizados`);
     } catch (error: any) {
-      console.error('Error en importación:', error);
+      console.error('[RestaurantImport] ❌ Error en importación:', error);
       toast.error(`Error: ${error.message}`);
       setImporting(false);
     }

@@ -287,20 +287,26 @@ const RestaurantSelector = ({ selectedCentro, setSelectedCentro, availableCentro
     queryFn: async () => {
       if (availableCentros.length === 0) return {};
       
+      console.info("[Layout] Fetching restaurants for selector, codes:", availableCentros);
       const { data, error } = await supabase
         .from("centres")
         .select("id, codigo, nombre, orquest_business_id")
         .eq("activo", true)
         .in("codigo", availableCentros);
       
-      if (error) throw error;
+      if (error) {
+        console.error("[Layout] Error fetching restaurants:", error);
+        throw error;
+      }
       
+      console.info("[Layout] Fetched restaurants count:", data?.length || 0);
       return data.reduce((acc, r) => {
         acc[r.codigo] = r;
         return acc;
       }, {} as Record<string, typeof data[0]>);
     },
     enabled: availableCentros.length > 0,
+    retry: 2,
   });
 
   return (
