@@ -1,59 +1,35 @@
-import { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
-import * as XLSX from "xlsx";
+import { useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-
-interface CsvRow {
-  [key: string]: string | number | null;
-}
-
-interface ValidationError {
-  row: number;
-  field: string;
-  message: string;
-  value?: any;
-  isCritical?: boolean;
-}
+import { 
+  useFileImport, 
+  useColumnMapping,
+  FileUploadZone,
+  ColumnMapper,
+  ImportProgress,
+  type Field
+} from "@/features/imports";
 
 interface ImportResult {
   total: number;
   inserted: number;
   updated: number;
   skipped: number;
-  errors: ValidationError[];
+  errors: Array<{ row: number; field: string; message: string }>;
 }
 
 const REQUIRED_FIELDS = ["site_number", "nombre"];
-
-const COLUMN_MAPPING = {
-  site_number: "site_number",
-  name: "nombre",
-  address: "direccion",
-  city: "ciudad",
-  state: "state",
-  country: "pais",
-  postal_code: "postal_code",
-  franchisee_name: "franchisee_name",
-  franchisee_email: "franchisee_email",
-  company_tax_id: "company_tax_id",
-  seating_capacity: "seating_capacity",
-  square_meters: "square_meters",
-  opening_date: "opening_date",
-};
 
 const FIELD_ALIASES: Record<string, string[]> = {
   site_number: ["site_number", "site", "codigo", "code", "site_code"],
@@ -71,109 +47,85 @@ const FIELD_ALIASES: Record<string, string[]> = {
   opening_date: ["opening_date", "fecha_apertura", "apertura", "opening"],
 };
 
+const RESTAURANT_FIELDS: Field[] = [
+  { key: "site_number", label: "Site Number", type: "text", required: true },
+  { key: "nombre", label: "Nombre", type: "text", required: true },
+  { key: "direccion", label: "Dirección", type: "text" },
+  { key: "ciudad", label: "Ciudad", type: "text" },
+  { key: "state", label: "Provincia/Estado", type: "text" },
+  { key: "pais", label: "País", type: "text" },
+  { key: "postal_code", label: "Código Postal", type: "text" },
+  { key: "franchisee_name", label: "Franquiciado (Nombre)", type: "text" },
+  { key: "franchisee_email", label: "Franquiciado (Email)", type: "email" },
+  { key: "company_tax_id", label: "CIF/NIF", type: "text" },
+  { key: "seating_capacity", label: "Capacidad (asientos)", type: "number" },
+  { key: "square_meters", label: "Metros Cuadrados", type: "number" },
+  { key: "opening_date", label: "Fecha Apertura", type: "date" },
+];
+
 export default function RestaurantImport() {
   const { isAdmin, loading: roleLoading } = useUserRole();
-  const [step, setStep] = useState(1);
-  const [csvData, setCsvData] = useState<CsvRow[]>([]);
-  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
-  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [importStrategy, setImportStrategy] = useState<"insert" | "upsert" | "skip">("upsert");
-  const [importing, setImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [forceImport, setForceImport] = useState(false);
-  const [autoDetectedColumns, setAutoDetectedColumns] = useState<string[]>([]);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      const data = e.target?.result;
-      const workbook = XLSX.read(data, { type: "binary" });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const json = XLSX.utils.sheet_to_json(worksheet) as CsvRow[];
-
-      setCsvData(json);
-      
-      // Auto-detectar mapeo de columnas con matching mejorado
-      const firstRow = json[0];
-      const detectedMapping: Record<string, string> = {};
-      
-      Object.keys(firstRow).forEach((csvCol) => {
-        const normalizedCsvCol = csvCol.toLowerCase().trim().replace(/\s+/g, "_");
-        
-        Object.entries(FIELD_ALIASES).forEach(([dbField, aliases]) => {
-          // Matching exacto primero (prioridad)
-          if (aliases.includes(normalizedCsvCol) || aliases.includes(csvCol.toLowerCase().trim())) {
-            detectedMapping[csvCol] = dbField;
-            return;
-          }
-          
-          // Matching parcial como fallback (solo si no hay mapping exacto)
-          if (!detectedMapping[csvCol]) {
-            const matchFound = aliases.some(alias => {
-              const normalizedAlias = alias.toLowerCase().replace(/\s+/g, "_");
-              return normalizedCsvCol.includes(normalizedAlias) || normalizedAlias.includes(normalizedCsvCol);
-            });
-            
-            if (matchFound) {
-              detectedMapping[csvCol] = dbField;
-            }
-          }
-        });
-      });
-      
-      console.log("Auto-detected mapping:", detectedMapping);
-      console.log("CSV columns:", Object.keys(firstRow));
-      setColumnMapping(detectedMapping);
-      setAutoDetectedColumns(Object.keys(detectedMapping));
-      setStep(2);
-      toast.success(`Archivo cargado: ${json.length} registros`);
-    };
-
-    reader.readAsText(file, 'UTF-8');
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      "text/csv": [".csv"],
-      "application/vnd.ms-excel": [".xls"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+  const {
+    step,
+    rawData,
+    headers,
+    progress,
+    stats,
+    validationErrors,
+    setStep,
+    parseFile,
+    validateData,
+    updateProgress,
+    updateStats,
+    reset,
+  } = useFileImport({
+    onDataParsed: (data, headers) => {
+      autoDetectMapping(headers);
     },
-    maxFiles: 1,
   });
 
-  const validateData = () => {
-    const errors: ValidationError[] = [];
-    const seenSiteNumbers = new Set<string>();
+  const {
+    columnMapping,
+    autoDetectMapping,
+    updateMapping,
+    validateMapping,
+  } = useColumnMapping({
+    fieldAliases: FIELD_ALIASES,
+    requiredFields: REQUIRED_FIELDS,
+  });
 
-    csvData.forEach((row, index) => {
+  const handleFileSelected = async (file: File) => {
+    await parseFile(file);
+    setStep("mapping");
+  };
+
+  const handleValidateData = () => {
+    if (!validateMapping()) return;
+
+    const errors = validateData(rawData, columnMapping, (row, index) => {
+      const validationErrors: Array<{ row: number; field: string; message: string; value?: any; isCritical?: boolean }> = [];
       const mappedRow: Record<string, any> = {};
-      
-      // Sanitizar y mapear datos
+
+      // Map and sanitize data
       Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
         let value = row[csvCol];
-        
-        // Limpiar valores problemáticos
         if (value === "#N/D" || value === "#N/A" || value === "N/A" || value === "" || value === null || value === undefined) {
           value = null;
         } else if (typeof value === "string") {
           value = value.trim();
-          if (value === "") {
-            value = null;
-          }
+          if (value === "") value = null;
         }
-        
         mappedRow[dbCol] = value;
       });
 
-      // Validar solo campos requeridos (site_number y nombre)
+      // Validate required fields
       REQUIRED_FIELDS.forEach((field) => {
         if (!mappedRow[field] || mappedRow[field] === null) {
-          errors.push({
+          validationErrors.push({
             row: index + 1,
             field,
             message: `Campo requerido "${field}" está vacío`,
@@ -183,26 +135,11 @@ export default function RestaurantImport() {
         }
       });
 
-      // Validar site_number único
-      if (mappedRow.site_number) {
-        const siteNum = String(mappedRow.site_number).trim();
-        if (seenSiteNumbers.has(siteNum)) {
-          errors.push({
-            row: index + 1,
-            field: "site_number",
-            message: `Número de sitio duplicado`,
-            value: siteNum,
-            isCritical: true,
-          });
-        }
-        seenSiteNumbers.add(siteNum);
-      }
-
-      // Validar email format SOLO si tiene valor
+      // Validate email format (only if has value)
       if (mappedRow.franchisee_email && mappedRow.franchisee_email !== null) {
         const email = String(mappedRow.franchisee_email).trim();
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          errors.push({
+          validationErrors.push({
             row: index + 1,
             field: "franchisee_email",
             message: "Formato de email inválido",
@@ -212,12 +149,12 @@ export default function RestaurantImport() {
         }
       }
 
-      // Validar fecha SOLO si tiene valor
+      // Validate date format (only if has value)
       if (mappedRow.opening_date && mappedRow.opening_date !== null) {
         const dateStr = String(mappedRow.opening_date);
         const date = new Date(dateStr);
         if (isNaN(date.getTime())) {
-          errors.push({
+          validationErrors.push({
             row: index + 1,
             field: "opening_date",
             message: "Formato de fecha inválido",
@@ -226,51 +163,28 @@ export default function RestaurantImport() {
           });
         }
       }
+
+      return validationErrors;
     });
 
-    setValidationErrors(errors);
-    
     const criticalErrors = errors.filter(e => e.isCritical);
-    const minorErrors = errors.filter(e => !e.isCritical);
-    
-    if (errors.length === 0) {
-      setStep(3);
-      toast.success("Validación completada sin errores");
+    if (criticalErrors.length === 0) {
+      setStep("preview");
+      toast.success("Validación completada");
     } else {
-      setStep(3);
-      if (criticalErrors.length > 0) {
-        toast.error(`${criticalErrors.length} errores críticos encontrados`);
-      } else {
-        toast.warning(`${minorErrors.length} advertencias encontradas (puedes forzar la importación)`);
-      }
+      toast.error(`${criticalErrors.length} errores críticos encontrados`);
     }
   };
 
   const performImport = async () => {
-    // Validación previa: asegurar que hay columnas mapeadas válidas
-    const mappedColumns = Object.keys(columnMapping);
-    if (mappedColumns.length === 0) {
-      toast.error("No hay columnas mapeadas. Mapea al menos site_number y nombre.");
-      return;
-    }
-    
-    const hasSiteNumber = Object.values(columnMapping).includes('site_number');
-    const hasName = Object.values(columnMapping).includes('nombre');
-    
-    if (!hasSiteNumber || !hasName) {
-      toast.error("Campos requeridos: site_number y nombre deben estar mapeados.");
-      return;
-    }
+    if (!validateMapping()) return;
 
-    console.info("[RestaurantImport] Iniciando importación usando tablas: Restaurants, franchisees");
-    console.info("[RestaurantImport] Columnas mapeadas:", columnMapping);
-    console.info("[RestaurantImport] Total filas a procesar:", csvData.length);
-    
-    setImporting(true);
-    setImportProgress(0);
+    console.info("[RestaurantImport] Iniciando importación");
+    setStep("importing");
+    updateProgress(0, rawData.length);
 
     const result: ImportResult = {
-      total: csvData.length,
+      total: rawData.length,
       inserted: 0,
       updated: 0,
       skipped: 0,
@@ -278,9 +192,9 @@ export default function RestaurantImport() {
     };
 
     try {
-      // PASO 1: Extraer y upsert franquiciados únicos
+      // STEP 1: Extract and upsert unique franchisees
       const uniqueFranchiseesMap = new Map();
-      csvData.forEach(row => {
+      rawData.forEach(row => {
         Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
           if (dbCol === 'franchisee_email' && row[csvCol]) {
             const email = String(row[csvCol]).trim().toLowerCase();
@@ -302,7 +216,7 @@ export default function RestaurantImport() {
       const franchiseeIdMap = new Map<string, string>();
 
       if (uniqueFranchisees.length > 0) {
-        console.info('[RestaurantImport] 🔄 Upserting franquiciados a tabla "franchisees":', uniqueFranchisees.length);
+        console.info('[RestaurantImport] Upserting franchisees:', uniqueFranchisees.length);
         
         const { data: franchisees, error: franchiseeError } = await supabase
           .from('franchisees')
@@ -310,24 +224,22 @@ export default function RestaurantImport() {
           .select('id, email');
 
         if (franchiseeError) {
-          console.error('[RestaurantImport] ❌ Error upserting franchisees:', franchiseeError);
+          console.error('[RestaurantImport] Error upserting franchisees:', franchiseeError);
           throw franchiseeError;
         }
 
         franchisees?.forEach(f => {
           franchiseeIdMap.set(f.email, f.id);
         });
-        
-        console.info('[RestaurantImport] ✅ Franquiciados procesados:', franchisees?.length);
       }
 
-      // PASO 2: Procesar restaurantes con franchisee_id
-      console.info('[RestaurantImport] 🔄 Procesando restaurantes hacia tabla "Restaurants"');
+      // STEP 2: Process restaurants with franchisee_id
+      console.info('[RestaurantImport] Processing restaurants');
       const batchSize = 50;
-      const batches = Math.ceil(csvData.length / batchSize);
+      const batches = Math.ceil(rawData.length / batchSize);
 
       for (let i = 0; i < batches; i++) {
-        const batch = csvData.slice(i * batchSize, (i + 1) * batchSize);
+        const batch = rawData.slice(i * batchSize, (i + 1) * batchSize);
 
         for (const [index, row] of batch.entries()) {
           const mappedRow: Record<string, any> = {};
@@ -336,7 +248,6 @@ export default function RestaurantImport() {
             mappedRow[dbCol] = row[csvCol] || null;
           });
 
-          // Preparar datos para Restaurants table
           const restaurantData: any = {
             name: mappedRow.nombre,
             site_number: mappedRow.site_number,
@@ -359,7 +270,6 @@ export default function RestaurantImport() {
               if (error) throw error;
               result.inserted++;
             } else if (importStrategy === "upsert") {
-              // Verificar si existe
               const { data: existing } = await supabase
                 .from("Restaurants")
                 .select("id")
@@ -379,7 +289,6 @@ export default function RestaurantImport() {
                 result.inserted++;
               }
             } else {
-              // skip - verificar si existe
               const { data: existing } = await supabase
                 .from("Restaurants")
                 .select("id")
@@ -403,24 +312,22 @@ export default function RestaurantImport() {
           }
         }
 
-        setImportProgress(((i + 1) / batches) * 100);
+        updateProgress((i + 1) * batchSize, rawData.length);
       }
 
       setImportResult(result);
-      setImporting(false);
-      setStep(4);
-      
-      console.info('[RestaurantImport] ✅ Importación completada:', {
-        insertados: result.inserted,
-        actualizados: result.updated,
-        omitidos: result.skipped,
-        errores: result.errors.length
+      updateStats({ 
+        loaded: result.inserted + result.updated,
+        skipped: result.skipped,
+        errors: result.errors.length 
       });
+      setStep("complete");
+      
       toast.success(`Importación completada: ${result.inserted} insertados, ${result.updated} actualizados`);
     } catch (error: any) {
-      console.error('[RestaurantImport] ❌ Error en importación:', error);
+      console.error('[RestaurantImport] Error:', error);
       toast.error(`Error: ${error.message}`);
-      setImporting(false);
+      setStep("preview");
     }
   };
 
@@ -444,59 +351,36 @@ export default function RestaurantImport() {
     );
   }
 
+  const criticalErrors = validationErrors.filter(e => e.isCritical);
+  const minorErrors = validationErrors.filter(e => !e.isCritical);
+
   return (
     <Layout>
       <div className="container mx-auto py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Importar Restaurantes desde CSV</h1>
+          <h1 className="text-3xl font-bold">Importar Restaurantes</h1>
           <p className="text-muted-foreground">
-            Carga y procesa datos masivos de restaurantes
+            Carga y procesa datos masivos de restaurantes desde CSV/Excel
           </p>
         </div>
 
-        <Tabs value={`step${step}`} className="w-full">
+        <Tabs value={step} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="step1">1. Cargar</TabsTrigger>
-            <TabsTrigger value="step2" disabled={step < 2}>2. Mapear</TabsTrigger>
-            <TabsTrigger value="step3" disabled={step < 3}>3. Vista Previa</TabsTrigger>
-            <TabsTrigger value="step4" disabled={step < 4}>4. Resultado</TabsTrigger>
+            <TabsTrigger value="upload">1. Cargar</TabsTrigger>
+            <TabsTrigger value="mapping" disabled={step === "upload"}>2. Mapear</TabsTrigger>
+            <TabsTrigger value="preview" disabled={step === "upload" || step === "mapping"}>3. Vista Previa</TabsTrigger>
+            <TabsTrigger value="complete" disabled={step !== "complete"}>4. Resultado</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="step1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Paso 1: Cargar Archivo CSV</CardTitle>
-                <CardDescription>
-                  Arrastra o selecciona un archivo CSV/Excel con datos de restaurantes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div
-                  {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
-                    isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25"
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  {isDragActive ? (
-                    <p>Suelta el archivo aquí...</p>
-                  ) : (
-                    <>
-                      <p className="text-lg mb-2">
-                        Arrastra un archivo CSV aquí, o haz clic para seleccionar
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Formatos aceptados: .csv, .xls, .xlsx
-                      </p>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="upload">
+            <FileUploadZone
+              onFileSelected={handleFileSelected}
+              title="Paso 1: Cargar Archivo"
+              description="Arrastra o selecciona un archivo CSV/Excel con datos de restaurantes"
+            />
           </TabsContent>
 
-          <TabsContent value="step2">
+          <TabsContent value="mapping">
             <Card>
               <CardHeader>
                 <CardTitle>Paso 2: Mapear Columnas</CardTitle>
@@ -505,70 +389,30 @@ export default function RestaurantImport() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {autoDetectedColumns.length > 0 && (
+                {Object.keys(columnMapping).length > 0 && (
                   <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
                     <h3 className="font-semibold mb-2 flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-primary" />
                       Auto-detección Completada
                     </h3>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Se detectaron {autoDetectedColumns.length} columnas automáticamente
+                      Se detectaron {Object.keys(columnMapping).length} columnas automáticamente
                     </p>
-                    <div className="space-y-2">
-                      <div className="font-medium text-sm">Mapeo aplicado:</div>
-                      <div className="space-y-1 font-mono text-xs bg-background p-3 rounded border">
-                        {Object.entries(columnMapping).map(([csv, db]) => (
-                          <div key={csv} className="flex items-center gap-2">
-                            <Badge variant="outline" className="font-mono">
-                              {csv}
-                            </Badge>
-                            <span>→</span>
-                            <Badge variant="secondary" className="font-mono">
-                              {db}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  {csvData.length > 0 && Object.keys(csvData[0]).map((csvCol) => (
-                    <div key={csvCol} className="flex items-center gap-4">
-                      <Label className="w-48 font-mono text-sm">{csvCol}</Label>
-                      <span>→</span>
-                      <Select
-                        value={columnMapping[csvCol]}
-                        onValueChange={(value) =>
-                          setColumnMapping((prev) => ({ ...prev, [csvCol]: value }))
-                        }
-                      >
-                        <SelectTrigger className="w-64">
-                          <SelectValue placeholder="Seleccionar campo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(COLUMN_MAPPING).map(([key, value]) => (
-                            <SelectItem key={key} value={value}>
-                              {value}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {columnMapping[csvCol] && (
-                        <Badge variant="outline" className="ml-2">
-                          ✓
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <ColumnMapper
+                  headers={headers}
+                  fields={RESTAURANT_FIELDS}
+                  mapping={columnMapping}
+                  onMappingChange={updateMapping}
+                />
 
                 <div className="mt-8 flex justify-between">
-                  <Button variant="outline" onClick={() => setStep(1)}>
+                  <Button variant="outline" onClick={() => setStep("upload")}>
                     Volver
                   </Button>
-                  <Button onClick={validateData}>
+                  <Button onClick={handleValidateData}>
                     Validar y Continuar
                   </Button>
                 </div>
@@ -576,7 +420,7 @@ export default function RestaurantImport() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="step3">
+          <TabsContent value="preview">
             <Card>
               <CardHeader>
                 <CardTitle>Paso 3: Vista Previa y Configuración</CardTitle>
@@ -589,7 +433,7 @@ export default function RestaurantImport() {
                   <div className="mb-6 p-4 bg-destructive/10 rounded-lg">
                     <h3 className="font-semibold text-destructive mb-2 flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5" />
-                      {validationErrors.filter(e => e.isCritical).length} Errores Críticos, {validationErrors.filter(e => !e.isCritical).length} Advertencias
+                      {criticalErrors.length} Errores Críticos, {minorErrors.length} Advertencias
                     </h3>
                     <div className="max-h-48 overflow-y-auto space-y-1">
                       {validationErrors.slice(0, 10).map((error, idx) => (
@@ -608,7 +452,7 @@ export default function RestaurantImport() {
                       )}
                     </div>
                     
-                    {validationErrors.some(e => !e.isCritical) && (
+                    {minorErrors.length > 0 && (
                       <div className="mt-4 flex items-center gap-3 p-3 bg-background rounded border">
                         <Switch
                           id="force-import"
@@ -616,7 +460,7 @@ export default function RestaurantImport() {
                           onCheckedChange={setForceImport}
                         />
                         <Label htmlFor="force-import" className="cursor-pointer">
-                          Forzar importación ignorando advertencias (errores críticos seguirán bloqueando)
+                          Forzar importación ignorando advertencias
                         </Label>
                       </div>
                     )}
@@ -630,15 +474,9 @@ export default function RestaurantImport() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="insert">
-                        INSERT - Solo nuevos registros
-                      </SelectItem>
-                      <SelectItem value="upsert">
-                        UPSERT - Actualizar si existe
-                      </SelectItem>
-                      <SelectItem value="skip">
-                        SKIP - Saltar duplicados
-                      </SelectItem>
+                      <SelectItem value="insert">INSERT - Solo nuevos registros</SelectItem>
+                      <SelectItem value="upsert">UPSERT - Actualizar si existe</SelectItem>
+                      <SelectItem value="skip">SKIP - Saltar duplicados</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -654,7 +492,7 @@ export default function RestaurantImport() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {csvData.slice(0, 20).map((row, idx) => {
+                      {rawData.slice(0, 20).map((row, idx) => {
                         const mappedRow: Record<string, any> = {};
                         Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
                           mappedRow[dbCol] = row[csvCol];
@@ -662,9 +500,7 @@ export default function RestaurantImport() {
 
                         return (
                           <TableRow key={idx}>
-                            <TableCell className="font-mono">
-                              {mappedRow.site_number}
-                            </TableCell>
+                            <TableCell className="font-mono">{mappedRow.site_number}</TableCell>
                             <TableCell>{mappedRow.nombre}</TableCell>
                             <TableCell>{mappedRow.ciudad}</TableCell>
                             <TableCell>{mappedRow.franchisee_name}</TableCell>
@@ -676,36 +512,36 @@ export default function RestaurantImport() {
                 </div>
 
                 <p className="text-sm text-muted-foreground mt-2">
-                  Mostrando 20 de {csvData.length} registros
+                  Mostrando 20 de {rawData.length} registros
                 </p>
 
                 <div className="mt-8 flex justify-between">
-                  <Button variant="outline" onClick={() => setStep(2)}>
+                  <Button variant="outline" onClick={() => setStep("mapping")}>
                     Volver
                   </Button>
                   <Button 
                     onClick={performImport} 
                     disabled={
-                      importing || 
-                      (validationErrors.filter(e => e.isCritical).length > 0) ||
-                      (validationErrors.filter(e => !e.isCritical).length > 0 && !forceImport)
+                      criticalErrors.length > 0 ||
+                      (minorErrors.length > 0 && !forceImport)
                     }
                   >
-                    {importing ? "Importando..." : "Iniciar Importación"}
+                    Iniciar Importación
                   </Button>
                 </div>
-
-                {importing && (
-                  <div className="mt-4">
-                    <Progress value={importProgress} />
-                    <p className="text-sm text-center mt-2">{Math.round(importProgress)}%</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="step4">
+          <TabsContent value="importing">
+            <ImportProgress 
+              progress={progress}
+              stats={stats}
+              isComplete={false}
+            />
+          </TabsContent>
+
+          <TabsContent value="complete">
             {importResult && (
               <Card>
                 <CardHeader>
@@ -715,7 +551,6 @@ export default function RestaurantImport() {
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div className="text-center p-4 border rounded-lg">
-                      <FileSpreadsheet className="mx-auto h-8 w-8 mb-2 text-muted-foreground" />
                       <p className="text-2xl font-bold">{importResult.total}</p>
                       <p className="text-sm text-muted-foreground">Total</p>
                     </div>
@@ -752,9 +587,7 @@ export default function RestaurantImport() {
                   )}
 
                   <div className="mt-8">
-                    <Button onClick={() => window.location.reload()}>
-                      Nueva Importación
-                    </Button>
+                    <Button onClick={reset}>Nueva Importación</Button>
                   </div>
                 </CardContent>
               </Card>
