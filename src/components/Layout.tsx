@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
 import {
   SidebarProvider,
@@ -51,6 +52,12 @@ const Layout = ({ children }: LayoutProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const { isAdmin } = useUserRole();
   const { selectedCentro, setSelectedCentro, availableCentros } = useCentro();
+  const isMobile = useIsMobile();
+  const [everAdmin, setEverAdmin] = useState(false);
+
+  useEffect(() => {
+    if (isAdmin) setEverAdmin(true);
+  }, [isAdmin]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -93,7 +100,7 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <Sidebar className="border-r border-sidebar-border">
+        <Sidebar collapsible={isMobile ? "offcanvas" : "none"} className="border-r border-sidebar-border">
           <div className="p-6 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-sidebar-primary rounded-lg">
@@ -127,7 +134,7 @@ const Layout = ({ children }: LayoutProps) => {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {isAdmin && (
+            {(isAdmin || everAdmin) && (
               <SidebarGroup>
                 <SidebarGroupLabel>Administración</SidebarGroupLabel>
                 <SidebarGroupContent>
@@ -242,7 +249,7 @@ const Layout = ({ children }: LayoutProps) => {
 
         <div className="flex-1 flex flex-col">
           <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
-            <SidebarTrigger />
+            <SidebarTrigger className="md:hidden" />
             
             <div className="flex items-center gap-4">
               {/* Selector de restaurante mejorado - muestra [codigo] nombre */}
