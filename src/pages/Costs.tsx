@@ -1,157 +1,62 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCentro } from "@/contexts/CentroContext";
+import { useCostAnalysis } from "@/hooks/useCostAnalysis";
+import { ExportUtils } from "@/lib/exporters";
+import { CostCalculations } from "@/lib/calculations/costCalculations";
+import { Formatters } from "@/lib/formatters";
 import Layout from "@/components/Layout";
+import { PageHeader, LoadingSpinner, EmptyState } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Download, DollarSign, Calendar as CalendarIcon, Loader2, TrendingUp, TrendingDown, Upload } from "lucide-react";
-import { toast } from "sonner";
+import { Download, DollarSign, Calendar as CalendarIcon, Upload, TrendingUp, TrendingDown } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 
-interface PayrollData {
-  employee_id: string;
-  employee_name: string;
-  employee_centro: string;
-  horas_trabajadas: number;
-  horas_vacaciones: number;
-  horas_formacion: number;
-  coste_total: number;
-  coste_medio: number;
-}
-
-interface ComparisonData {
-  centro: string;
-  costes_planificados: number;
-  costes_reales: number;
-}
-
 const Costs = () => {
   const navigate = useNavigate();
   const { isAdmin } = useUserRole();
   const { selectedCentro } = useCentro();
-  const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
   
-  const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
-  const [comparisonData, setComparisonData] = useState<ComparisonData[]>([]);
-
-  useEffect(() => {
-    fetchCostData();
-  }, [startDate, endDate, selectedCentro]);
-
-  const fetchCostData = async () => {
-    try {
-      setLoading(true);
-      const startDateStr = format(startDate, "yyyy-MM-dd");
-      const endDateStr = format(endDate, "yyyy-MM-dd");
-
-      // Fetch payroll costs
-      const { data: payrollCosts, error: payrollError } = await supabase.rpc("get_payroll_costs", {
-        p_start_date: startDateStr,
-        p_end_date: endDateStr,
-        p_centro: selectedCentro,
-      });
-
-      if (payrollError) throw payrollError;
-      setPayrollData(payrollCosts || []);
-
-      // Fetch planned vs actual comparison
-      const { data: comparison, error: comparisonError } = await supabase.rpc("get_planned_vs_actual_costs", {
-        p_start_date: startDateStr,
-        p_end_date: endDateStr,
-        p_centro: selectedCentro,
-      });
-
-      if (comparisonError) throw comparisonError;
-      setComparisonData(comparison || []);
-    } catch (error: any) {
-      console.error("Error fetching cost data:", error);
-      toast.error("Error al cargar datos de costes: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { payrollData, comparisonData, summary, isLoading } = useCostAnalysis(
+    startDate,
+    endDate,
+    selectedCentro
+  );
 
   const exportToCSV = () => {
-    if (payrollData.length === 0) {
-      toast.error("No hay datos para exportar");
-      return;
-    }
-
-    const headers = [
-      "Empleado",
-      "Centro",
-      "Horas Trabajadas",
-      "Horas Vacaciones",
-      "Horas Formación",
-      "Coste Total",
-      "Coste Medio/Hora"
-    ];
-
-    const rows = payrollData.map((item) => [
-      item.employee_name,
-      item.employee_centro || "",
-      Number(item.horas_trabajadas).toFixed(2),
-      Number(item.horas_vacaciones).toFixed(2),
-      Number(item.horas_formacion).toFixed(2),
-      Number(item.coste_total).toFixed(2),
-      Number(item.coste_medio).toFixed(2),
-    ]);
-
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
+    ExportUtils.toCSV(
+      payrollData,
+      [
+        { header: "Empleado", accessor: "employee_name" },
+        { header: "Centro", accessor: (row) => row.employee_centro || "" },
+        { header: "Horas Trabajadas", accessor: (row) => Formatters.formatNumber(row.horas_trabajadas, 2) },
+        { header: "Horas Vacaciones", accessor: (row) => Formatters.formatNumber(row.horas_vacaciones, 2) },
+        { header: "Horas Formación", accessor: (row) => Formatters.formatNumber(row.horas_formacion, 2) },
+        { header: "Coste Total", accessor: (row) => Formatters.formatNumber(row.coste_total, 2) },
+        { header: "Coste Medio/Hora", accessor: (row) => Formatters.formatNumber(row.coste_medio, 2) },
+      ],
       `costes_${format(startDate, "yyyy-MM-dd")}_${format(endDate, "yyyy-MM-dd")}.csv`
     );
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast.success("Datos exportados correctamente");
   };
-
-  // Calculate summary statistics
-  const totalHorasTrabajadas = payrollData.reduce((sum, item) => sum + Number(item.horas_trabajadas), 0);
-  const totalCoste = payrollData.reduce((sum, item) => sum + Number(item.coste_total), 0);
-  const totalHorasVacaciones = payrollData.reduce((sum, item) => sum + Number(item.horas_vacaciones), 0);
-  const totalHorasFormacion = payrollData.reduce((sum, item) => sum + Number(item.horas_formacion), 0);
-  const costeMedio = totalHorasTrabajadas > 0 ? totalCoste / totalHorasTrabajadas : 0;
-
-  // Calculate comparison totals
-  const totalPlanned = comparisonData.reduce((sum, item) => sum + Number(item.costes_planificados), 0);
-  const totalActual = comparisonData.reduce((sum, item) => sum + Number(item.costes_reales), 0);
-  const variance = totalActual - totalPlanned;
-  const variancePercentage = totalPlanned > 0 ? ((variance / totalPlanned) * 100) : 0;
 
   return (
     <Layout>
       <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Análisis de Costes</h1>
-            <p className="text-muted-foreground mt-1">
-              Seguimiento detallado de costes de personal
-            </p>
-          </div>
+          <PageHeader
+            title="Análisis de Costes"
+            description="Seguimiento detallado de costes de personal"
+          />
 
           <div className="flex flex-col sm:flex-row gap-3">
             {isAdmin && (
@@ -205,10 +110,8 @@ const Costs = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+        {isLoading ? (
+          <LoadingSpinner size="lg" />
         ) : (
           <>
             {/* Summary Cards */}
@@ -222,7 +125,7 @@ const Costs = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    €{totalCoste.toLocaleString("es-ES", { maximumFractionDigits: 2 })}
+                    {CostCalculations.formatCurrency(summary.totalCoste)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Coste total del periodo
@@ -239,7 +142,7 @@ const Costs = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {totalHorasTrabajadas.toLocaleString("es-ES", { maximumFractionDigits: 2 })}h
+                    {Formatters.formatNumber(summary.totalHorasTrabajadas, 2)}h
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Total horas trabajadas
@@ -256,7 +159,7 @@ const Costs = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    €{costeMedio.toLocaleString("es-ES", { maximumFractionDigits: 2 })}
+                    {CostCalculations.formatCurrency(summary.costeMedio)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Promedio por hora
@@ -269,19 +172,19 @@ const Costs = () => {
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Desviación
                   </CardTitle>
-                  {variance >= 0 ? (
+                  {summary.variance.isOverBudget ? (
                     <TrendingUp className="h-4 w-4 text-destructive" />
                   ) : (
                     <TrendingDown className="h-4 w-4 text-success" />
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className={cn("text-2xl font-bold", variance >= 0 ? "text-destructive" : "text-success")}>
-                    {variance >= 0 ? "+" : ""}
-                    {variancePercentage.toFixed(1)}%
+                  <div className={cn("text-2xl font-bold", summary.variance.isOverBudget ? "text-destructive" : "text-success")}>
+                    {summary.variance.isOverBudget ? "+" : ""}
+                    {CostCalculations.formatPercentage(summary.variance.percentage, 1)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    vs. planificado (€{variance.toLocaleString("es-ES", { maximumFractionDigits: 2 })})
+                    vs. planificado ({CostCalculations.formatCurrency(summary.variance.diff)})
                   </p>
                 </CardContent>
               </Card>
@@ -417,7 +320,7 @@ const Costs = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-chart-4">
-                    {totalHorasVacaciones.toLocaleString("es-ES", { maximumFractionDigits: 2 })}h
+                    {Formatters.formatNumber(summary.totalHorasVacaciones, 2)}h
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Total del periodo
@@ -431,7 +334,7 @@ const Costs = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-chart-5">
-                    {totalHorasFormacion.toLocaleString("es-ES", { maximumFractionDigits: 2 })}h
+                    {Formatters.formatNumber(summary.totalHorasFormacion, 2)}h
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Total del periodo
