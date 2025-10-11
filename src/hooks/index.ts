@@ -9,3 +9,8 @@ export { useEmployees, useEmployeesByCentro, useEmployee } from "./useEmployees"
 export { useEmployeeCentros } from "./useEmployeeCentros";
 export { useDashboardMetrics } from "./useDashboardMetrics";
 export { useCostAnalysis } from "./useCostAnalysis";
+export { useSchedules, useSchedulesByEmployee, useScheduleMutations } from "./useSchedules";
+export { useAbsences, useAbsenceMutations } from "./useAbsences";
+export type { Absence, AbsenceFilters } from "./useAbsences";
+export { useDataQualityIssues, useDataQualityMutations } from "./useDataQuality";
+export type { DQIssue, DQFilters } from "./useDataQuality";

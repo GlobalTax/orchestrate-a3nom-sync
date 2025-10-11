@@ -1,34 +1,19 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useMemo } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCentro } from "@/contexts/CentroContext";
+import { useDataQualityIssues, useDataQualityMutations, DQIssue } from "@/hooks/useDataQuality";
+import { ExportUtils } from "@/lib/exporters";
+import { Formatters } from "@/lib/formatters";
 import Layout from "@/components/Layout";
+import { PageHeader, LoadingSpinner, EmptyState } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, RefreshCw, CheckCircle, Download, Eye } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
-import { es } from "date-fns/locale";
-
-type DQIssue = {
-  id: string;
-  tipo: string;
-  severidad: "critica" | "alta" | "media" | "baja";
-  employee_id: string | null;
-  periodo_inicio: string;
-  periodo_fin: string;
-  centro: string | null;
-  detalle: any;
-  resuelto: boolean;
-  resuelto_por: string | null;
-  resuelto_at: string | null;
-  created_at: string;
-};
+import { subMonths, startOfMonth, endOfMonth } from "date-fns";
 
 const severityColors = {
   critica: "destructive",
@@ -54,12 +39,10 @@ const tipoLabels = {
 export default function DataQuality() {
   const { isAdmin, isGestor, loading: roleLoading } = useUserRole();
   const { selectedCentro: globalCentro } = useCentro();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>("current-month");
   const [selectedSeveridad, setSelectedSeveridad] = useState<string>("all");
-  const [selectedEstado, setSelectedEstado] = useState<string>("pending");
+  const [selectedEstado, setSelectedEstado] = useState<"all" | "pending" | "resolved">("pending");
   const [detailDialog, setDetailDialog] = useState<DQIssue | null>(null);
 
   // Calculate date range
@@ -80,133 +63,50 @@ export default function DataQuality() {
 
   const dateRange = getDateRange();
 
-  // Fetch centros
-  const { data: centros = [] } = useQuery({
-    queryKey: ["centros"],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_centros");
-      if (error) throw error;
-      return data || [];
-    },
+  const { issues, isLoading, refetch } = useDataQualityIssues({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+    centro: globalCentro || undefined,
+    severidad: selectedSeveridad,
+    estado: selectedEstado,
   });
 
-  // Fetch DQ issues
-  const { data: issues = [], isLoading, refetch } = useQuery({
-    queryKey: ["dq-issues", globalCentro, selectedSeveridad, selectedEstado, dateRange],
-    queryFn: async () => {
-      let query = supabase
-        .from("dq_issues")
-        .select("*")
-        .gte("periodo_inicio", format(dateRange.start, "yyyy-MM-dd"))
-        .lte("periodo_fin", format(dateRange.end, "yyyy-MM-dd"))
-        .order("created_at", { ascending: false });
-
-      if (globalCentro) {
-        query = query.eq("centro", globalCentro);
-      }
-
-      if (selectedSeveridad !== "all") {
-        query = query.eq("severidad", selectedSeveridad as "critica" | "alta" | "media" | "baja");
-      }
-
-      if (selectedEstado === "pending") {
-        query = query.eq("resuelto", false);
-      } else if (selectedEstado === "resolved") {
-        query = query.eq("resuelto", true);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as DQIssue[];
-    },
-    enabled: !roleLoading && (isAdmin || isGestor),
-  });
-
-  // Recalculate mutation
-  const recalculateMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.rpc("detect_dq_issues", {
-        p_start_date: format(dateRange.start, "yyyy-MM-dd"),
-        p_end_date: format(dateRange.end, "yyyy-MM-dd"),
-        p_centro: globalCentro,
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["dq-issues"] });
-      toast({
-        title: "Análisis completado",
-        description: `Se detectaron ${data[0]?.issues_detected || 0} incidencias`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al recalcular",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Resolve mutation
-  const resolveMutation = useMutation({
-    mutationFn: async (issueId: string) => {
-      const { error } = await supabase
-        .from("dq_issues")
-        .update({
-          resuelto: true,
-          resuelto_at: new Date().toISOString(),
-        })
-        .eq("id", issueId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dq-issues"] });
-      toast({ title: "Incidencia marcada como resuelta" });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error al resolver",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const { recalculate, resolve } = useDataQualityMutations();
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = ["Tipo", "Severidad", "Centro", "Periodo", "Estado", "Detalle"];
-    const rows = issues.map((issue) => [
-      tipoLabels[issue.tipo as keyof typeof tipoLabels] || issue.tipo,
-      issue.severidad,
-      issue.centro || "N/A",
-      `${format(new Date(issue.periodo_inicio), "dd/MM/yyyy")} - ${format(new Date(issue.periodo_fin), "dd/MM/yyyy")}`,
-      issue.resuelto ? "Resuelto" : "Pendiente",
-      JSON.stringify(issue.detalle),
-    ]);
-
-    const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `incidencias-calidad-${format(new Date(), "yyyy-MM-dd")}.csv`;
-    a.click();
+    ExportUtils.toCSV(
+      issues,
+      [
+        { header: "Tipo", accessor: (row) => tipoLabels[row.tipo as keyof typeof tipoLabels] || row.tipo },
+        { header: "Severidad", accessor: "severidad" },
+        { header: "Centro", accessor: (row) => row.centro || "N/A" },
+        {
+          header: "Periodo",
+          accessor: (row) =>
+            `${Formatters.formatDate(row.periodo_inicio)} - ${Formatters.formatDate(row.periodo_fin)}`,
+        },
+        { header: "Estado", accessor: (row) => (row.resuelto ? "Resuelto" : "Pendiente") },
+        { header: "Detalle", accessor: (row) => JSON.stringify(row.detalle) },
+      ],
+      `incidencias-calidad-${Formatters.formatDate(new Date(), "YYYY-MM-DD")}.csv`
+    );
   };
 
-  const issuesByType = issues.reduce((acc, issue) => {
-    const sev = issue.severidad as string;
-    acc[sev] = (acc[sev] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const issuesByType = useMemo(
+    () =>
+      issues.reduce((acc, issue) => {
+        const sev = issue.severidad as string;
+        acc[sev] = (acc[sev] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    [issues]
+  );
 
   if (roleLoading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-96">
-          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <LoadingSpinner size="lg" />
       </Layout>
     );
   }
@@ -225,16 +125,11 @@ export default function DataQuality() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <AlertTriangle className="h-8 w-8" />
-            Calidad de Datos
-          </h1>
-          <p className="text-muted-foreground">
-            Monitorización de incidencias y anomalías en datos
-          </p>
-        </div>
+      <div className="p-6 space-y-6 animate-fade-in">
+        <PageHeader
+          title="Calidad de Datos"
+          description="Monitorización de incidencias y anomalías en datos"
+        />
 
         {/* Filters */}
         <Card>
@@ -267,7 +162,7 @@ export default function DataQuality() {
                 </SelectContent>
               </Select>
 
-              <Select value={selectedEstado} onValueChange={setSelectedEstado}>
+              <Select value={selectedEstado} onValueChange={(value) => setSelectedEstado(value as "all" | "pending" | "resolved")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Estado" />
                 </SelectTrigger>
@@ -280,11 +175,11 @@ export default function DataQuality() {
 
               <div className="flex gap-2">
                 <Button
-                  onClick={() => recalculateMutation.mutate()}
-                  disabled={recalculateMutation.isPending}
+                  onClick={() => recalculate.mutate({ startDate: dateRange.start, endDate: dateRange.end, centro: globalCentro || undefined })}
+                  disabled={recalculate.isPending}
                   className="flex-1"
                 >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${recalculateMutation.isPending ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`h-4 w-4 mr-2 ${recalculate.isPending ? "animate-spin" : ""}`} />
                   Recalcular
                 </Button>
                 <Button onClick={exportToCSV} variant="outline" disabled={issues.length === 0}>
@@ -349,13 +244,9 @@ export default function DataQuality() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="flex justify-center py-8">
-                <RefreshCw className="h-6 w-6 animate-spin" />
-              </div>
+              <LoadingSpinner />
             ) : issues.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No se encontraron incidencias para los filtros seleccionados
-              </div>
+              <EmptyState message="No se encontraron incidencias para los filtros seleccionados" />
             ) : (
               <Table>
                 <TableHeader>
@@ -381,8 +272,7 @@ export default function DataQuality() {
                       </TableCell>
                       <TableCell>{issue.centro || "N/A"}</TableCell>
                       <TableCell>
-                        {format(new Date(issue.periodo_inicio), "dd/MM/yyyy", { locale: es })} -{" "}
-                        {format(new Date(issue.periodo_fin), "dd/MM/yyyy", { locale: es })}
+                        {Formatters.formatDate(issue.periodo_inicio)} - {Formatters.formatDate(issue.periodo_fin)}
                       </TableCell>
                       <TableCell>
                         {issue.resuelto ? (
@@ -409,8 +299,8 @@ export default function DataQuality() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => resolveMutation.mutate(issue.id)}
-                              disabled={resolveMutation.isPending}
+                              onClick={() => resolve.mutate(issue.id)}
+                              disabled={resolve.isPending}
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />
                               Resolver
@@ -451,8 +341,7 @@ export default function DataQuality() {
                   <div>
                     <div className="text-sm text-muted-foreground">Periodo</div>
                     <div className="font-medium">
-                      {format(new Date(detailDialog.periodo_inicio), "dd/MM/yyyy")} -{" "}
-                      {format(new Date(detailDialog.periodo_fin), "dd/MM/yyyy")}
+                      {Formatters.formatDate(detailDialog.periodo_inicio)} - {Formatters.formatDate(detailDialog.periodo_fin)}
                     </div>
                   </div>
                   <div>
