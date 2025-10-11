@@ -285,9 +285,11 @@ const RestaurantSelector = ({ selectedCentro, setSelectedCentro, availableCentro
   const { data: restaurantData } = useQuery({
     queryKey: ['restaurants_for_selector', availableCentros],
     queryFn: async () => {
+      if (availableCentros.length === 0) return {};
+      
       const { data, error } = await supabase
         .from("centres")
-        .select("codigo, nombre, orquest_business_id")
+        .select("id, codigo, nombre, orquest_business_id")
         .eq("activo", true)
         .in("codigo", availableCentros);
       
