@@ -98,7 +98,13 @@ const Layout = ({ children }: LayoutProps) => {
   if (!session) return null;
 
   return (
-    <SidebarProvider>
+    <SidebarProvider 
+      open={!isMobile}
+      onOpenChange={(open) => {
+        // En desktop, siempre mantenerlo abierto
+        if (!isMobile) return;
+      }}
+    >
       <div className="min-h-screen flex w-full">
         <Sidebar collapsible={isMobile ? "offcanvas" : "none"} className="border-r border-sidebar-border">
           <div className="p-6 border-b border-sidebar-border">
