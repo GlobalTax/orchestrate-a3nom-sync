@@ -31,6 +31,20 @@ interface Centre {
   orquest_service_id: string | null;
   orquest_business_id: string | null;
   activo: boolean;
+  franchisee_id: string | null;
+}
+
+interface RestaurantWithFranchisee extends Centre {
+  franchisee_name: string | null;
+  franchisee_email: string | null;
+  company_tax_id: string | null;
+}
+
+interface Franchisee {
+  id: string;
+  email: string;
+  name: string;
+  company_tax_id: string | null;
 }
 
 interface RestaurantService {
@@ -66,10 +80,12 @@ const Restaurantes = () => {
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [costCentreDialogOpen, setCostCentreDialogOpen] = useState(false);
   const [franchiseeDialogOpen, setFranchiseeDialogOpen] = useState(false);
+  const [franchiseeDataDialogOpen, setFranchiseeDataDialogOpen] = useState(false);
   const [testingCentre, setTestingCentre] = useState<string | null>(null);
-  const [editingCentre, setEditingCentre] = useState<Centre | null>(null);
+  const [editingCentre, setEditingCentre] = useState<RestaurantWithFranchisee | null>(null);
   const [editingService, setEditingService] = useState<RestaurantService | null>(null);
   const [editingCostCentre, setEditingCostCentre] = useState<CostCentre | null>(null);
+  const [editingFranchisee, setEditingFranchisee] = useState<Franchisee | null>(null);
   const [selectedCentroForFranchisee, setSelectedCentroForFranchisee] = useState<string>("");
   
   const [centreFormData, setCentreFormData] = useState({
@@ -81,14 +97,18 @@ const Restaurantes = () => {
     postal_code: "",
     state: "",
     site_number: "",
-    franchisee_name: "",
-    franchisee_email: "",
-    company_tax_id: "",
+    franchisee_id: null as string | null,
     seating_capacity: null as number | null,
     square_meters: null as number | null,
     opening_date: null as string | null,
     orquest_business_id: "",
     orquest_service_id: "",
+  });
+
+  const [franchiseeFormData, setFranchiseeFormData] = useState({
+    email: "",
+    name: "",
+    company_tax_id: "",
   });
 
   const [serviceFormData, setServiceFormData] = useState({
@@ -103,16 +123,50 @@ const Restaurantes = () => {
     descripcion: "",
   });
 
-  // Fetch centres/restaurants
+  // Fetch centres/restaurants with franchisee info
   const { data: centres = [], isLoading: loadingCentres } = useQuery({
-    queryKey: ["centres"],
+    queryKey: ["restaurants_with_franchisees"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("centres")
+        .from("v_restaurants_with_franchisees")
         .select("*")
-        .order("nombre");
+        .order("name");
       if (error) throw error;
-      return data as Centre[];
+      return (data || []).map(r => ({
+        id: r.id,
+        codigo: r.site_number || r.id,
+        nombre: r.name || "",
+        direccion: r.address,
+        ciudad: r.city,
+        pais: r.country || "España",
+        orquest_service_id: null,
+        orquest_business_id: null,
+        activo: true,
+        franchisee_id: r.franchisee_id,
+        franchisee_name: r.franchisee_name,
+        franchisee_email: r.franchisee_email,
+        company_tax_id: r.company_tax_id,
+        postal_code: r.postal_code,
+        state: r.state,
+        site_number: r.site_number,
+        seating_capacity: r.seating_capacity ? parseInt(r.seating_capacity) : null,
+        square_meters: r.square_meters ? parseFloat(r.square_meters) : null,
+        opening_date: r.opening_date,
+      })) as RestaurantWithFranchisee[];
+    },
+    enabled: isAdmin,
+  });
+
+  // Fetch franchisees
+  const { data: franchisees = [], isLoading: loadingFranchisees } = useQuery({
+    queryKey: ["franchisees"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("franchisees")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return data as Franchisee[];
     },
     enabled: isAdmin,
   });
@@ -239,20 +293,36 @@ const Restaurantes = () => {
   // Mutations for centres
   const saveCentreMutation = useMutation({
     mutationFn: async (data: typeof centreFormData) => {
+      // Map form data to Restaurants table structure
+      const restaurantData = {
+        site_number: data.codigo,
+        name: data.nombre,
+        address: data.direccion,
+        city: data.ciudad,
+        state: data.state,
+        country: data.pais,
+        postal_code: data.postal_code,
+        franchisee_id: data.franchisee_id,
+        seating_capacity: data.seating_capacity?.toString() || null,
+        square_meters: data.square_meters?.toString() || null,
+        opening_date: data.opening_date,
+      };
+
       if (editingCentre) {
         const { error } = await supabase
-          .from("centres")
-          .update(data)
+          .from("Restaurants")
+          .update(restaurantData)
           .eq("id", editingCentre.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from("centres")
-          .insert([{ ...data, activo: true }]);
+          .from("Restaurants")
+          .insert([restaurantData]);
         if (error) throw error;
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["restaurants_with_franchisees"] });
       queryClient.invalidateQueries({ queryKey: ["centres"] });
       toast.success(editingCentre ? "Restaurante actualizado" : "Restaurante creado");
       resetCentreForm();
@@ -371,6 +441,51 @@ const Restaurantes = () => {
     },
   });
 
+  // Mutations for franchisees
+  const saveFranchiseeMutation = useMutation({
+    mutationFn: async (data: typeof franchiseeFormData) => {
+      if (editingFranchisee) {
+        const { error } = await supabase
+          .from("franchisees")
+          .update(data)
+          .eq("id", editingFranchisee.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("franchisees")
+          .insert([data]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["franchisees"] });
+      queryClient.invalidateQueries({ queryKey: ["restaurants_with_franchisees"] });
+      toast.success(editingFranchisee ? "Franquiciado actualizado" : "Franquiciado creado");
+      resetFranchiseeDataForm();
+    },
+    onError: (error: any) => {
+      toast.error("Error: " + error.message);
+    },
+  });
+
+  const deleteFranchiseeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("franchisees")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["franchisees"] });
+      queryClient.invalidateQueries({ queryKey: ["restaurants_with_franchisees"] });
+      toast.success("Franquiciado eliminado");
+    },
+    onError: (error: any) => {
+      toast.error("Error: " + error.message);
+    },
+  });
+
   // Test connection
   const testConnection = async (centreId: string) => {
     const centre = centres.find(c => c.id === centreId);
@@ -410,9 +525,7 @@ const Restaurantes = () => {
       postal_code: "",
       state: "",
       site_number: "",
-      franchisee_name: "",
-      franchisee_email: "",
-      company_tax_id: "",
+      franchisee_id: null,
       seating_capacity: null,
       square_meters: null,
       opening_date: null,
@@ -421,6 +534,16 @@ const Restaurantes = () => {
     });
     setEditingCentre(null);
     setDialogOpen(false);
+  };
+
+  const resetFranchiseeDataForm = () => {
+    setFranchiseeFormData({
+      email: "",
+      name: "",
+      company_tax_id: "",
+    });
+    setEditingFranchisee(null);
+    setFranchiseeDataDialogOpen(false);
   };
 
   const resetServiceForm = () => {
@@ -443,7 +566,7 @@ const Restaurantes = () => {
     setCostCentreDialogOpen(false);
   };
 
-  const handleEditCentre = (centre: Centre) => {
+  const handleEditCentre = (centre: RestaurantWithFranchisee) => {
     setEditingCentre(centre);
     setCentreFormData({
       codigo: centre.codigo,
@@ -454,9 +577,7 @@ const Restaurantes = () => {
       postal_code: (centre as any).postal_code || "",
       state: (centre as any).state || "",
       site_number: (centre as any).site_number || "",
-      franchisee_name: (centre as any).franchisee_name || "",
-      franchisee_email: (centre as any).franchisee_email || "",
-      company_tax_id: (centre as any).company_tax_id || "",
+      franchisee_id: centre.franchisee_id,
       seating_capacity: (centre as any).seating_capacity || null,
       square_meters: (centre as any).square_meters || null,
       opening_date: (centre as any).opening_date || null,
@@ -464,6 +585,16 @@ const Restaurantes = () => {
       orquest_service_id: centre.orquest_service_id || "",
     });
     setDialogOpen(true);
+  };
+
+  const handleEditFranchisee = (franchisee: Franchisee) => {
+    setEditingFranchisee(franchisee);
+    setFranchiseeFormData({
+      email: franchisee.email,
+      name: franchisee.name,
+      company_tax_id: franchisee.company_tax_id || "",
+    });
+    setFranchiseeDataDialogOpen(true);
   };
 
   const handleEditService = (service: RestaurantService) => {
@@ -570,7 +701,8 @@ const Restaurantes = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="general">Datos Generales</TabsTrigger>
-            <TabsTrigger value="franchisees">Franquiciados</TabsTrigger>
+            <TabsTrigger value="franchisees-data">Franquiciados</TabsTrigger>
+            <TabsTrigger value="franchisees">Gestores (Acceso Sistema)</TabsTrigger>
             <TabsTrigger value="services">Services Orquest</TabsTrigger>
             <TabsTrigger value="cost-centres">Centros de Coste A3</TabsTrigger>
           </TabsList>
@@ -603,6 +735,7 @@ const Restaurantes = () => {
                         <TableHead>Código</TableHead>
                         <TableHead>Nombre</TableHead>
                         <TableHead>Ciudad</TableHead>
+                        <TableHead>Franquiciado</TableHead>
                         <TableHead>Business ID</TableHead>
                         <TableHead>Services</TableHead>
                         <TableHead>Estado</TableHead>
@@ -612,7 +745,7 @@ const Restaurantes = () => {
                     <TableBody>
                       {centres.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                             No hay restaurantes registrados
                           </TableCell>
                         </TableRow>
@@ -626,6 +759,20 @@ const Restaurantes = () => {
                             </TableCell>
                             <TableCell className="font-medium">{centre.nombre}</TableCell>
                             <TableCell>{centre.ciudad || "N/A"}</TableCell>
+                            <TableCell>
+                              {(centre as RestaurantWithFranchisee).franchisee_name ? (
+                                <div>
+                                  <div className="font-medium text-sm">
+                                    {(centre as RestaurantWithFranchisee).franchisee_name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {(centre as RestaurantWithFranchisee).franchisee_email}
+                                  </div>
+                                </div>
+                              ) : (
+                                <Badge variant="outline">Sin asignar</Badge>
+                              )}
+                            </TableCell>
                             <TableCell>
                               <code className="text-xs bg-muted px-2 py-1 rounded">
                                 {centre.orquest_business_id || "N/A"}
@@ -699,15 +846,124 @@ const Restaurantes = () => {
             </Card>
           </TabsContent>
 
-          {/* TAB: Franquiciados/Gestores */}
+          {/* TAB: Franquiciados - Datos de Negocio */}
+          <TabsContent value="franchisees-data" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <Alert className="flex-1 mr-4">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Gestión de Franquiciados</AlertTitle>
+                <AlertDescription>
+                  Los franquiciados son los propietarios o gestores de negocio de los restaurantes.
+                  Aquí puedes gestionar su información (nombre, email, CIF).
+                </AlertDescription>
+              </Alert>
+              <Button onClick={() => setFranchiseeDataDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Franquiciado
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Franquiciados Registrados</CardTitle>
+                <CardDescription>
+                  {franchisees.length} franquiciado{franchisees.length !== 1 ? "s" : ""} en el sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingFranchisees ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>CIF/NIF</TableHead>
+                        <TableHead>Restaurantes</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {franchisees.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            No hay franquiciados registrados
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        franchisees.map((franchisee) => {
+                          const restaurantsCount = centres.filter(
+                            c => c.franchisee_id === franchisee.id
+                          ).length;
+                          return (
+                            <TableRow key={franchisee.id}>
+                              <TableCell className="font-medium">{franchisee.name}</TableCell>
+                              <TableCell>{franchisee.email}</TableCell>
+                              <TableCell>
+                                {franchisee.company_tax_id ? (
+                                  <code className="text-xs bg-muted px-2 py-1 rounded">
+                                    {franchisee.company_tax_id}
+                                  </code>
+                                ) : (
+                                  <span className="text-muted-foreground">N/A</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">
+                                  {restaurantsCount} restaurante{restaurantsCount !== 1 ? "s" : ""}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEditFranchisee(franchisee)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      if (restaurantsCount > 0) {
+                                        toast.error("No se puede eliminar: tiene restaurantes asignados");
+                                        return;
+                                      }
+                                      if (confirm("¿Eliminar franquiciado?")) {
+                                        deleteFranchiseeMutation.mutate(franchisee.id);
+                                      }
+                                    }}
+                                    disabled={restaurantsCount > 0 || deleteFranchiseeMutation.isPending}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TAB: Gestores - Control de Acceso */}
           <TabsContent value="franchisees" className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
               <Alert className="flex-1">
                 <Info className="h-4 w-4" />
-                <AlertTitle>Gestión de Franquiciados</AlertTitle>
+                <AlertTitle>Control de Acceso al Sistema</AlertTitle>
                 <AlertDescription>
-                  Los franquiciados (gestores) tienen acceso limitado a los datos de su restaurante asignado.
-                  Desde aquí puedes asignar gestores a cada restaurante.
+                  Los gestores tienen acceso limitado a los datos de su restaurante asignado.
+                  Esto es diferente a los franquiciados (propietarios del negocio).
+                  Desde aquí puedes asignar qué usuarios pueden acceder a qué restaurantes.
                 </AlertDescription>
               </Alert>
               <div className="flex gap-2">
@@ -1147,48 +1403,36 @@ const Restaurantes = () => {
               <div className="border-t pt-4 space-y-4">
                 <h3 className="font-semibold text-sm">Información del Franquiciado</h3>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="franchisee_name">Nombre Franquiciado</Label>
-                    <Input
-                      id="franchisee_name"
-                      value={centreFormData.franchisee_name}
-                      onChange={(e) =>
-                        setCentreFormData({ ...centreFormData, franchisee_name: e.target.value })
-                      }
-                      placeholder="Nombre completo"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="franchisee_email">Email Franquiciado</Label>
-                    <Input
-                      id="franchisee_email"
-                      type="email"
-                      value={centreFormData.franchisee_email}
-                      onChange={(e) =>
-                        setCentreFormData({ ...centreFormData, franchisee_email: e.target.value })
-                      }
-                      placeholder="email@example.com"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="franchisee_id">Franquiciado</Label>
+                  <Select
+                    value={centreFormData.franchisee_id || ""}
+                    onValueChange={(value) => 
+                      setCentreFormData({ ...centreFormData, franchisee_id: value || null })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar franquiciado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Ninguno</SelectItem>
+                      {franchisees.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.name} ({f.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Gestiona los franquiciados en la pestaña "Franquiciados"
+                  </p>
                 </div>
               </div>
 
               <div className="border-t pt-4 space-y-4">
                 <h3 className="font-semibold text-sm">Detalles del Local</h3>
                 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="company_tax_id">NIF/CIF</Label>
-                    <Input
-                      id="company_tax_id"
-                      value={centreFormData.company_tax_id}
-                      onChange={(e) =>
-                        setCentreFormData({ ...centreFormData, company_tax_id: e.target.value })
-                      }
-                      placeholder="A12345678"
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="seating_capacity">Capacidad</Label>
                     <Input
@@ -1473,9 +1717,9 @@ const Restaurantes = () => {
         <Dialog open={franchiseeDialogOpen} onOpenChange={setFranchiseeDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Asignar Franquiciado</DialogTitle>
+              <DialogTitle>Asignar Gestor</DialogTitle>
               <DialogDescription>
-                Selecciona un usuario para asignarlo como gestor del restaurante
+                Selecciona un usuario para darle acceso como gestor del restaurante
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -1524,6 +1768,83 @@ const Restaurantes = () => {
                 Cancelar
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog: Nuevo/Editar Franquiciado (Datos de Negocio) */}
+        <Dialog open={franchiseeDataDialogOpen} onOpenChange={setFranchiseeDataDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingFranchisee ? "Editar Franquiciado" : "Nuevo Franquiciado"}
+              </DialogTitle>
+              <DialogDescription>
+                Gestiona la información del propietario/franquiciado del restaurante
+              </DialogDescription>
+            </DialogHeader>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                saveFranchiseeMutation.mutate(franchiseeFormData);
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="franchisee_name">
+                  Nombre <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="franchisee_name"
+                  value={franchiseeFormData.name}
+                  onChange={(e) =>
+                    setFranchiseeFormData({ ...franchiseeFormData, name: e.target.value })
+                  }
+                  placeholder="Nombre completo del franquiciado"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="franchisee_email_data">
+                  Email <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="franchisee_email_data"
+                  type="email"
+                  value={franchiseeFormData.email}
+                  onChange={(e) =>
+                    setFranchiseeFormData({ ...franchiseeFormData, email: e.target.value })
+                  }
+                  placeholder="email@example.com"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="franchisee_tax_id">CIF/NIF</Label>
+                <Input
+                  id="franchisee_tax_id"
+                  value={franchiseeFormData.company_tax_id}
+                  onChange={(e) =>
+                    setFranchiseeFormData({ ...franchiseeFormData, company_tax_id: e.target.value })
+                  }
+                  placeholder="A12345678"
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={resetFranchiseeDataForm}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={saveFranchiseeMutation.isPending}>
+                  {saveFranchiseeMutation.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {editingFranchisee ? "Actualizar" : "Crear"}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
