@@ -97,34 +97,43 @@ export default function RestaurantImport() {
 
       setCsvData(json);
       
-      // Auto-detectar mapeo de columnas con aliases mejorados
+      // Auto-detectar mapeo de columnas con matching mejorado
       const firstRow = json[0];
       const detectedMapping: Record<string, string> = {};
       
       Object.keys(firstRow).forEach((csvCol) => {
-        const normalizedCol = csvCol.toLowerCase().trim().replace(/\s+/g, "_");
+        const normalizedCsvCol = csvCol.toLowerCase().trim().replace(/\s+/g, "_");
         
-        // Intentar mapear usando aliases
         Object.entries(FIELD_ALIASES).forEach(([dbField, aliases]) => {
-          if (aliases.some(alias => {
-            const normalizedAlias = alias.toLowerCase().replace(/\s+/g, "_");
-            return normalizedCol === normalizedAlias || 
-                   normalizedCol.includes(normalizedAlias) || 
-                   normalizedAlias.includes(normalizedCol);
-          })) {
+          // Matching exacto primero (prioridad)
+          if (aliases.includes(normalizedCsvCol) || aliases.includes(csvCol.toLowerCase().trim())) {
             detectedMapping[csvCol] = dbField;
+            return;
+          }
+          
+          // Matching parcial como fallback (solo si no hay mapping exacto)
+          if (!detectedMapping[csvCol]) {
+            const matchFound = aliases.some(alias => {
+              const normalizedAlias = alias.toLowerCase().replace(/\s+/g, "_");
+              return normalizedCsvCol.includes(normalizedAlias) || normalizedAlias.includes(normalizedCsvCol);
+            });
+            
+            if (matchFound) {
+              detectedMapping[csvCol] = dbField;
+            }
           }
         });
       });
       
       console.log("Auto-detected mapping:", detectedMapping);
+      console.log("CSV columns:", Object.keys(firstRow));
       setColumnMapping(detectedMapping);
-      setAutoDetectedColumns(Object.values(detectedMapping));
+      setAutoDetectedColumns(Object.keys(detectedMapping));
       setStep(2);
       toast.success(`Archivo cargado: ${json.length} registros`);
     };
 
-    reader.readAsBinaryString(file);
+    reader.readAsText(file, 'UTF-8');
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -422,14 +431,26 @@ export default function RestaurantImport() {
                   <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
                     <h3 className="font-semibold mb-2 flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-primary" />
-                      Columnas Auto-detectadas
+                      Auto-detección Completada
                     </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {autoDetectedColumns.map((col, idx) => (
-                        <Badge key={idx} variant="secondary">
-                          {col}
-                        </Badge>
-                      ))}
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Se detectaron {autoDetectedColumns.length} columnas automáticamente
+                    </p>
+                    <div className="space-y-2">
+                      <div className="font-medium text-sm">Mapeo aplicado:</div>
+                      <div className="space-y-1 font-mono text-xs bg-background p-3 rounded border">
+                        {Object.entries(columnMapping).map(([csv, db]) => (
+                          <div key={csv} className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono">
+                              {csv}
+                            </Badge>
+                            <span>→</span>
+                            <Badge variant="secondary" className="font-mono">
+                              {db}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
