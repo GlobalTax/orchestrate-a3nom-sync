@@ -38,4 +38,7 @@ export { ErrorHandler, AppError, retryWithBackoff } from "./errorHandling";
 
 export { Formatters } from "./formatters";
 
+export { ExportUtils } from "./exporters";
+export type { ExportColumn } from "./exporters";
+
 export * from "./constants";

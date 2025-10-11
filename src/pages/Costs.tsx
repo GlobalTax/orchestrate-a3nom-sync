@@ -237,9 +237,7 @@ const Costs = () => {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-[350px] flex items-center justify-center text-muted-foreground">
-                    No hay datos disponibles para el periodo seleccionado
-                  </div>
+                  <EmptyState message="No hay datos disponibles para el periodo seleccionado" />
                 )}
               </CardContent>
             </Card>
@@ -258,9 +256,7 @@ const Costs = () => {
               </CardHeader>
               <CardContent>
                 {payrollData.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No hay datos de nómina para el periodo seleccionado
-                  </div>
+                  <EmptyState message="No hay datos de nómina para el periodo seleccionado" />
                 ) : (
                   <div className="rounded-md border overflow-x-auto">
                     <Table>
@@ -289,19 +285,19 @@ const Costs = () => {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              {Number(item.horas_trabajadas).toLocaleString("es-ES", { maximumFractionDigits: 2 })}h
+                              {Formatters.formatNumber(item.horas_trabajadas, 2)}h
                             </TableCell>
                             <TableCell className="text-right">
-                              {Number(item.horas_vacaciones).toLocaleString("es-ES", { maximumFractionDigits: 2 })}h
+                              {Formatters.formatNumber(item.horas_vacaciones, 2)}h
                             </TableCell>
                             <TableCell className="text-right">
-                              {Number(item.horas_formacion).toLocaleString("es-ES", { maximumFractionDigits: 2 })}h
+                              {Formatters.formatNumber(item.horas_formacion, 2)}h
                             </TableCell>
                             <TableCell className="text-right font-medium">
-                              €{Number(item.coste_total).toLocaleString("es-ES", { maximumFractionDigits: 2 })}
+                              {CostCalculations.formatCurrency(item.coste_total)}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">
-                              €{Number(item.coste_medio).toLocaleString("es-ES", { maximumFractionDigits: 2 })}
+                              {CostCalculations.formatCurrency(item.coste_medio)}
                             </TableCell>
                           </TableRow>
                         ))}
