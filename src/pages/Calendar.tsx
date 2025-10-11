@@ -1,8 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useState, useMemo } from "react";
 import { useCentro } from "@/contexts/CentroContext";
+import { useEmployees, useSchedules, useScheduleMutations, useAbsences, useAbsenceMutations } from "@/hooks";
 import Layout from "@/components/Layout";
+import { PageHeader, LoadingSpinner, ConfirmDialog } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,13 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Calendar as BigCalendar, momentLocalizer, View, Event as CalendarEvent } from "react-big-calendar";
 import moment from "moment";
 import "moment/locale/es";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { Plus, Clock, AlertCircle, Loader2, Calendar as CalendarIcon } from "lucide-react";
-import { toast } from "sonner";
+import { Clock, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar as DatePickerCalendar } from "@/components/ui/calendar";
@@ -26,54 +24,27 @@ import { cn } from "@/lib/utils";
 moment.locale("es");
 const localizer = momentLocalizer(moment);
 
-interface Employee {
-  id: string;
-  nombre: string;
-  apellidos: string;
-  centro: string | null;
-}
-
-interface Schedule {
-  id: string;
-  employee_id: string;
-  fecha: string;
-  hora_inicio: string;
-  hora_fin: string;
-  horas_planificadas: number;
-  tipo_asignacion: string | null;
-  service_id: string | null;
-}
-
-interface Absence {
-  id: string;
-  employee_id: string;
-  fecha: string;
-  horas_ausencia: number;
-  tipo: string;
-  motivo: string | null;
-}
-
 interface CalendarEventData extends CalendarEvent {
   id: string;
   type: "schedule" | "absence";
   employeeId: string;
   employeeName: string;
   centro: string | null;
-  details: Schedule | Absence;
+  details: any;
   resource?: { color: string };
 }
 
 const Calendar = () => {
-  const { isAdmin } = useUserRole();
   const { selectedCentro } = useCentro();
   const [view, setView] = useState<View>("month");
   const [date, setDate] = useState(new Date());
-  const [loading, setLoading] = useState(true);
   
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [absences, setAbsences] = useState<Absence[]>([]);
-  const [services, setServices] = useState<string[]>([]);
+  const { employees, isLoading: employeesLoading } = useEmployees();
+  const { schedules, isLoading: schedulesLoading } = useSchedules();
+  const { absences, isLoading: absencesLoading } = useAbsences();
+  
+  const scheduleMutations = useScheduleMutations();
+  const absenceMutations = useAbsenceMutations();
   
   const [selectedService, setSelectedService] = useState<string>("all");
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
@@ -81,6 +52,7 @@ const Calendar = () => {
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [isAbsenceDialogOpen, setIsAbsenceDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEventData | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   
   // Form states
   const [scheduleForm, setScheduleForm] = useState({
@@ -100,70 +72,14 @@ const Calendar = () => {
     motivo: "",
   });
 
-  useEffect(() => {
-    fetchData();
-    setupRealtimeSubscription();
-  }, []);
+  const loading = employeesLoading || schedulesLoading || absencesLoading;
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-
-      const [employeesRes, schedulesRes, absencesRes] = await Promise.all([
-        supabase.from("employees").select("*").order("apellidos"),
-        supabase.from("schedules").select("*"),
-        supabase.from("absences").select("*"),
-      ]);
-
-      if (employeesRes.error) throw employeesRes.error;
-      if (schedulesRes.error) throw schedulesRes.error;
-      if (absencesRes.error) throw absencesRes.error;
-
-      setEmployees(employeesRes.data || []);
-      setSchedules(schedulesRes.data || []);
-      setAbsences(absencesRes.data || []);
-
-      // Extract unique services
-      const uniqueServices = Array.from(
-        new Set(schedulesRes.data?.map(s => s.service_id).filter(Boolean))
-      ) as string[];
-      setServices(uniqueServices);
-    } catch (error: any) {
-      console.error("Error fetching data:", error);
-      toast.error("Error al cargar datos");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const setupRealtimeSubscription = () => {
-    const schedulesChannel = supabase
-      .channel("schedules-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "schedules" },
-        () => {
-          fetchData();
-        }
-      )
-      .subscribe();
-
-    const absencesChannel = supabase
-      .channel("absences-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "absences" },
-        () => {
-          fetchData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(schedulesChannel);
-      supabase.removeChannel(absencesChannel);
-    };
-  };
+  // Extract unique services from schedules
+  const services = useMemo(() => {
+    return Array.from(
+      new Set(schedules.map(s => s.service_id).filter(Boolean))
+    ) as string[];
+  }, [schedules]);
 
   const calendarEvents: CalendarEventData[] = useMemo(() => {
     const scheduleEvents: CalendarEventData[] = schedules
@@ -231,122 +147,86 @@ const Calendar = () => {
 
   const handleSaveSchedule = async () => {
     if (!scheduleForm.employee_id || !scheduleForm.hora_inicio || !scheduleForm.hora_fin) {
-      toast.error("Por favor completa todos los campos obligatorios");
       return;
     }
 
-    try {
-      const start = moment(`${format(scheduleForm.fecha, "yyyy-MM-dd")} ${scheduleForm.hora_inicio}`);
-      const end = moment(`${format(scheduleForm.fecha, "yyyy-MM-dd")} ${scheduleForm.hora_fin}`);
-      const hours = end.diff(start, "hours", true);
+    const start = moment(`${format(scheduleForm.fecha, "yyyy-MM-dd")} ${scheduleForm.hora_inicio}`);
+    const end = moment(`${format(scheduleForm.fecha, "yyyy-MM-dd")} ${scheduleForm.hora_fin}`);
+    const hours = end.diff(start, "hours", true);
 
-      const scheduleData = {
-        employee_id: scheduleForm.employee_id,
-        fecha: format(scheduleForm.fecha, "yyyy-MM-dd"),
-        hora_inicio: scheduleForm.hora_inicio,
-        hora_fin: scheduleForm.hora_fin,
-        horas_planificadas: hours,
-        tipo_asignacion: scheduleForm.tipo_asignacion || null,
-        service_id: scheduleForm.service_id || null,
-      };
+    const scheduleData = {
+      employee_id: scheduleForm.employee_id,
+      fecha: format(scheduleForm.fecha, "yyyy-MM-dd"),
+      hora_inicio: scheduleForm.hora_inicio,
+      hora_fin: scheduleForm.hora_fin,
+      horas_planificadas: hours,
+      tipo_asignacion: scheduleForm.tipo_asignacion || null,
+      service_id: scheduleForm.service_id || null,
+    };
 
-      if (editingEvent && editingEvent.type === "schedule") {
-        const { error } = await supabase
-          .from("schedules")
-          .update(scheduleData)
-          .eq("id", editingEvent.id);
-
-        if (error) throw error;
-        toast.success("Turno actualizado correctamente");
-      } else {
-        const { error } = await supabase.from("schedules").insert(scheduleData);
-
-        if (error) throw error;
-        toast.success("Turno creado correctamente");
-      }
-
-      setIsScheduleDialogOpen(false);
-      resetScheduleForm();
-      setEditingEvent(null);
-    } catch (error: any) {
-      console.error("Error saving schedule:", error);
-      toast.error("Error al guardar turno: " + error.message);
+    if (editingEvent && editingEvent.type === "schedule") {
+      await scheduleMutations.update.mutateAsync({ 
+        id: editingEvent.id, 
+        schedule: scheduleData 
+      });
+    } else {
+      await scheduleMutations.create.mutateAsync(scheduleData as any);
     }
+
+    setIsScheduleDialogOpen(false);
+    resetScheduleForm();
+    setEditingEvent(null);
   };
 
   const handleSaveAbsence = async () => {
     if (!absenceForm.employee_id || !absenceForm.horas_ausencia || !absenceForm.tipo) {
-      toast.error("Por favor completa todos los campos obligatorios");
       return;
     }
 
-    try {
-      const absenceData = {
-        employee_id: absenceForm.employee_id,
-        fecha: format(absenceForm.fecha, "yyyy-MM-dd"),
-        horas_ausencia: Number(absenceForm.horas_ausencia),
-        tipo: absenceForm.tipo,
-        motivo: absenceForm.motivo || null,
-      };
+    const absenceData = {
+      employee_id: absenceForm.employee_id,
+      fecha: format(absenceForm.fecha, "yyyy-MM-dd"),
+      horas_ausencia: Number(absenceForm.horas_ausencia),
+      tipo: absenceForm.tipo,
+      motivo: absenceForm.motivo || null,
+    };
 
-      if (editingEvent && editingEvent.type === "absence") {
-        const { error } = await supabase
-          .from("absences")
-          .update(absenceData)
-          .eq("id", editingEvent.id);
-
-        if (error) throw error;
-        toast.success("Ausencia actualizada correctamente");
-      } else {
-        const { error } = await supabase.from("absences").insert(absenceData);
-
-        if (error) throw error;
-        toast.success("Ausencia registrada correctamente");
-      }
-
-      setIsAbsenceDialogOpen(false);
-      resetAbsenceForm();
-      setEditingEvent(null);
-    } catch (error: any) {
-      console.error("Error saving absence:", error);
-      toast.error("Error al guardar ausencia: " + error.message);
+    if (editingEvent && editingEvent.type === "absence") {
+      await absenceMutations.update.mutateAsync({ 
+        id: editingEvent.id, 
+        absence: absenceData 
+      });
+    } else {
+      await absenceMutations.create.mutateAsync(absenceData as any);
     }
+
+    setIsAbsenceDialogOpen(false);
+    resetAbsenceForm();
+    setEditingEvent(null);
   };
 
   const handleDeleteEvent = async () => {
     if (!editingEvent) return;
 
-    if (!window.confirm("¿Estás seguro de que deseas eliminar este evento?")) {
-      return;
+    if (editingEvent.type === "schedule") {
+      await scheduleMutations.delete.mutateAsync(editingEvent.id);
+    } else {
+      await absenceMutations.delete.mutateAsync(editingEvent.id);
     }
 
-    try {
-      if (editingEvent.type === "schedule") {
-        const { error } = await supabase.from("schedules").delete().eq("id", editingEvent.id);
-        if (error) throw error;
-        toast.success("Turno eliminado correctamente");
-      } else {
-        const { error } = await supabase.from("absences").delete().eq("id", editingEvent.id);
-        if (error) throw error;
-        toast.success("Ausencia eliminada correctamente");
-      }
-
-      setIsScheduleDialogOpen(false);
-      setIsAbsenceDialogOpen(false);
-      setEditingEvent(null);
-      resetScheduleForm();
-      resetAbsenceForm();
-    } catch (error: any) {
-      console.error("Error deleting event:", error);
-      toast.error("Error al eliminar evento: " + error.message);
-    }
+    setIsScheduleDialogOpen(false);
+    setIsAbsenceDialogOpen(false);
+    setEditingEvent(null);
+    resetScheduleForm();
+    resetAbsenceForm();
+    setDeleteConfirmOpen(false);
   };
 
   const handleSelectEvent = (event: CalendarEventData) => {
     setEditingEvent(event);
 
     if (event.type === "schedule") {
-      const schedule = event.details as Schedule;
+      const schedule = event.details;
       setScheduleForm({
         employee_id: schedule.employee_id,
         fecha: new Date(schedule.fecha),
@@ -357,7 +237,7 @@ const Calendar = () => {
       });
       setIsScheduleDialogOpen(true);
     } else {
-      const absence = event.details as Absence;
+      const absence = event.details;
       setAbsenceForm({
         employee_id: absence.employee_id,
         fecha: new Date(absence.fecha),
@@ -407,12 +287,10 @@ const Calendar = () => {
     <Layout>
       <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Calendario de Planificación</h1>
-            <p className="text-muted-foreground mt-1">
-              Gestiona turnos y ausencias del equipo
-            </p>
-          </div>
+          <PageHeader
+            title="Calendario de Planificación"
+            description="Gestiona turnos y ausencias del equipo"
+          />
 
           <div className="flex gap-2">
             <Dialog open={isScheduleDialogOpen} onOpenChange={(open) => {
@@ -536,7 +414,10 @@ const Calendar = () => {
 
                 <DialogFooter className="gap-2">
                   {editingEvent && (
-                    <Button variant="destructive" onClick={handleDeleteEvent}>
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => setDeleteConfirmOpen(true)}
+                    >
                       Eliminar
                     </Button>
                   )}
@@ -672,7 +553,10 @@ const Calendar = () => {
 
                 <DialogFooter className="gap-2">
                   {editingEvent && (
-                    <Button variant="destructive" onClick={handleDeleteEvent}>
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => setDeleteConfirmOpen(true)}
+                    >
                       Eliminar
                     </Button>
                   )}
@@ -729,9 +613,7 @@ const Calendar = () => {
         <Card>
           <CardContent className="p-6">
             {loading ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <LoadingSpinner size="lg" text="Cargando calendario..." />
             ) : (
               <div className="h-[700px]">
                 <BigCalendar
@@ -782,6 +664,21 @@ const Calendar = () => {
             </div>
           </CardContent>
         </Card>
+
+        <ConfirmDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          title="Eliminar evento"
+          description={
+            editingEvent?.type === "schedule"
+              ? "¿Estás seguro de que deseas eliminar este turno?"
+              : "¿Estás seguro de que deseas eliminar esta ausencia?"
+          }
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          onConfirm={handleDeleteEvent}
+          variant="destructive"
+        />
       </div>
     </Layout>
   );
