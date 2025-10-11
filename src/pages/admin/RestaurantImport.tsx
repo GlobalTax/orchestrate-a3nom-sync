@@ -52,6 +52,22 @@ const COLUMN_MAPPING = {
   opening_date: "opening_date",
 };
 
+const FIELD_ALIASES: Record<string, string[]> = {
+  site_number: ["site_number", "site", "codigo", "code", "site_code"],
+  nombre: ["name", "nombre", "restaurant_name", "nom", "restaurant"],
+  direccion: ["address", "direccion", "addr", "direcció"],
+  ciudad: ["city", "ciudad", "town", "localidad"],
+  state: ["state", "provincia", "region", "estado"],
+  pais: ["country", "pais", "país", "nation"],
+  postal_code: ["postal_code", "zip", "cp", "codigo_postal", "postcode"],
+  franchisee_name: ["franchisee_name", "franquiciado", "franchisee", "owner_name"],
+  franchisee_email: ["franchisee_email", "email_franquiciado", "owner_email", "franchisee_mail"],
+  company_tax_id: ["company_tax_id", "cif", "nif", "tax_id", "vat"],
+  seating_capacity: ["seating_capacity", "capacidad", "asientos", "capacity"],
+  square_meters: ["square_meters", "metros", "m2", "area", "surface"],
+  opening_date: ["opening_date", "fecha_apertura", "apertura", "opening"],
+};
+
 export default function RestaurantImport() {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const [step, setStep] = useState(1);
@@ -76,19 +92,27 @@ export default function RestaurantImport() {
 
       setCsvData(json);
       
-      // Auto-detectar mapeo de columnas
+      // Auto-detectar mapeo de columnas con aliases mejorados
       const firstRow = json[0];
       const detectedMapping: Record<string, string> = {};
       
       Object.keys(firstRow).forEach((csvCol) => {
-        const normalizedCol = csvCol.toLowerCase().replace(/\s+/g, "_");
-        Object.entries(COLUMN_MAPPING).forEach(([csvKey, dbKey]) => {
-          if (normalizedCol.includes(csvKey) || csvKey.includes(normalizedCol)) {
-            detectedMapping[csvCol] = dbKey;
+        const normalizedCol = csvCol.toLowerCase().trim().replace(/\s+/g, "_");
+        
+        // Intentar mapear usando aliases
+        Object.entries(FIELD_ALIASES).forEach(([dbField, aliases]) => {
+          if (aliases.some(alias => {
+            const normalizedAlias = alias.toLowerCase().replace(/\s+/g, "_");
+            return normalizedCol === normalizedAlias || 
+                   normalizedCol.includes(normalizedAlias) || 
+                   normalizedAlias.includes(normalizedCol);
+          })) {
+            detectedMapping[csvCol] = dbField;
           }
         });
       });
       
+      console.log("Auto-detected mapping:", detectedMapping);
       setColumnMapping(detectedMapping);
       setStep(2);
       toast.success(`Archivo cargado: ${json.length} registros`);
@@ -114,13 +138,26 @@ export default function RestaurantImport() {
     csvData.forEach((row, index) => {
       const mappedRow: Record<string, any> = {};
       
+      // Sanitizar y mapear datos
       Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
-        mappedRow[dbCol] = row[csvCol];
+        let value = row[csvCol];
+        
+        // Limpiar valores problemáticos
+        if (value === "#N/D" || value === "#N/A" || value === "N/A" || value === "" || value === null || value === undefined) {
+          value = null;
+        } else if (typeof value === "string") {
+          value = value.trim();
+          if (value === "") {
+            value = null;
+          }
+        }
+        
+        mappedRow[dbCol] = value;
       });
 
-      // Validar campos requeridos
+      // Validar solo campos requeridos (site_number y nombre)
       REQUIRED_FIELDS.forEach((field) => {
-        if (!mappedRow[field]) {
+        if (!mappedRow[field] || mappedRow[field] === null) {
           errors.push({
             row: index + 1,
             field,
@@ -131,28 +168,33 @@ export default function RestaurantImport() {
 
       // Validar site_number único
       if (mappedRow.site_number) {
-        if (seenSiteNumbers.has(mappedRow.site_number)) {
+        const siteNum = String(mappedRow.site_number).trim();
+        if (seenSiteNumbers.has(siteNum)) {
           errors.push({
             row: index + 1,
             field: "site_number",
-            message: `Número de sitio duplicado: ${mappedRow.site_number}`,
+            message: `Número de sitio duplicado: ${siteNum}`,
           });
         }
-        seenSiteNumbers.add(mappedRow.site_number);
+        seenSiteNumbers.add(siteNum);
       }
 
-      // Validar email format
-      if (mappedRow.franchisee_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mappedRow.franchisee_email)) {
-        errors.push({
-          row: index + 1,
-          field: "franchisee_email",
-          message: "Formato de email inválido",
-        });
+      // Validar email format SOLO si tiene valor
+      if (mappedRow.franchisee_email && mappedRow.franchisee_email !== null) {
+        const email = String(mappedRow.franchisee_email).trim();
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          errors.push({
+            row: index + 1,
+            field: "franchisee_email",
+            message: "Formato de email inválido",
+          });
+        }
       }
 
-      // Validar fecha
-      if (mappedRow.opening_date) {
-        const date = new Date(mappedRow.opening_date);
+      // Validar fecha SOLO si tiene valor
+      if (mappedRow.opening_date && mappedRow.opening_date !== null) {
+        const dateStr = String(mappedRow.opening_date);
+        const date = new Date(dateStr);
         if (isNaN(date.getTime())) {
           errors.push({
             row: index + 1,
