@@ -1,94 +1,55 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { toast } from "sonner";
-import { 
-  Building2, Plus, Pencil, Power, PowerOff, Loader2, RefreshCw, Wifi, Info, 
-  Server, DollarSign, Edit, X, ArrowRight, Users, UserPlus, Trash2, Upload
-} from "lucide-react";
+import { Loader2, Building2, Plus, Info } from "lucide-react";
 
-interface Centre {
-  id: string;
-  codigo: string;
-  nombre: string;
-  direccion: string | null;
-  ciudad: string | null;
-  pais: string;
-  orquest_service_id: string | null;
-  orquest_business_id: string | null;
-  activo: boolean;
-  franchisee_id: string | null;
-}
+// Custom hooks
+import { useRestaurants } from "@/features/restaurants/hooks/useRestaurants";
+import { useFranchisees } from "@/features/restaurants/hooks/useFranchisees";
+import { useServices } from "@/features/restaurants/hooks/useServices";
+import { useCostCentres } from "@/features/restaurants/hooks/useCostCentres";
+import { useGestores } from "@/features/restaurants/hooks/useGestores";
 
-interface RestaurantWithFranchisee extends Centre {
-  franchisee_name: string | null;
-  franchisee_email: string | null;
-  company_tax_id: string | null;
-}
+// Components
+import { RestaurantsList } from "@/features/restaurants/components/RestaurantsList";
+import { FranchiseesTab } from "@/features/restaurants/components/FranchiseesTab";
+import { GestoresTab } from "@/features/restaurants/components/GestoresTab";
+import { ServicesTab } from "@/features/restaurants/components/ServicesTab";
+import { CostCentresTab } from "@/features/restaurants/components/CostCentresTab";
 
-interface Franchisee {
-  id: string;
-  email: string;
-  name: string;
-  company_tax_id: string | null;
-}
+// Dialogs
+import { RestaurantDialog } from "@/features/restaurants/components/dialogs/RestaurantDialog";
+import { FranchiseeDialog } from "@/features/restaurants/components/dialogs/FranchiseeDialog";
+import { ServiceDialog } from "@/features/restaurants/components/dialogs/ServiceDialog";
+import { CostCentreDialog } from "@/features/restaurants/components/dialogs/CostCentreDialog";
+import { AssignGestorDialog } from "@/features/restaurants/components/dialogs/AssignGestorDialog";
 
-interface RestaurantService {
-  id: string;
-  centro_id: string;
-  orquest_service_id: string;
-  descripcion: string | null;
-  activo: boolean;
-  centres: {
-    codigo: string;
-    nombre: string;
-  };
-}
-
-interface CostCentre {
-  id: string;
-  centro_id: string;
-  a3_centro_code: string;
-  descripcion: string | null;
-  activo: boolean;
-  centres: {
-    codigo: string;
-    nombre: string;
-  };
-}
+// Types
+import type {
+  RestaurantWithFranchisee,
+  Franchisee,
+  RestaurantService,
+  CostCentre,
+  RestaurantFormData,
+  FranchiseeFormData,
+  ServiceFormData,
+  CostCentreFormData,
+} from "@/features/restaurants/types";
 
 const Restaurantes = () => {
   const { isAdmin, loading: roleLoading } = useUserRole();
-  const queryClient = useQueryClient();
-  
+
+  // State management
   const [activeTab, setActiveTab] = useState("general");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
-  const [costCentreDialogOpen, setCostCentreDialogOpen] = useState(false);
-  const [franchiseeDialogOpen, setFranchiseeDialogOpen] = useState(false);
-  const [franchiseeDataDialogOpen, setFranchiseeDataDialogOpen] = useState(false);
   const [testingCentre, setTestingCentre] = useState<string | null>(null);
-  const [editingCentre, setEditingCentre] = useState<RestaurantWithFranchisee | null>(null);
-  const [editingService, setEditingService] = useState<RestaurantService | null>(null);
-  const [editingCostCentre, setEditingCostCentre] = useState<CostCentre | null>(null);
-  const [editingFranchisee, setEditingFranchisee] = useState<Franchisee | null>(null);
-  const [selectedCentroForFranchisee, setSelectedCentroForFranchisee] = useState<string>("");
   
-  const [centreFormData, setCentreFormData] = useState({
+  // Restaurant dialog state
+  const [restaurantDialogOpen, setRestaurantDialogOpen] = useState(false);
+  const [editingRestaurant, setEditingRestaurant] = useState<RestaurantWithFranchisee | null>(null);
+  const [restaurantFormData, setRestaurantFormData] = useState<RestaurantFormData>({
     codigo: "",
     nombre: "",
     direccion: "",
@@ -97,533 +58,148 @@ const Restaurantes = () => {
     postal_code: "",
     state: "",
     site_number: "",
-    franchisee_id: null as string | null,
-    seating_capacity: null as number | null,
-    square_meters: null as number | null,
-    opening_date: null as string | null,
+    franchisee_id: null,
+    seating_capacity: null,
+    square_meters: null,
+    opening_date: null,
     orquest_business_id: "",
     orquest_service_id: "",
   });
 
-  const [franchiseeFormData, setFranchiseeFormData] = useState({
+  // Franchisee dialog state
+  const [franchiseeDialogOpen, setFranchiseeDialogOpen] = useState(false);
+  const [editingFranchisee, setEditingFranchisee] = useState<Franchisee | null>(null);
+  const [franchiseeFormData, setFranchiseeFormData] = useState<FranchiseeFormData>({
     email: "",
     name: "",
     company_tax_id: "",
   });
 
-  const [serviceFormData, setServiceFormData] = useState({
+  // Service dialog state
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
+  const [editingService, setEditingService] = useState<RestaurantService | null>(null);
+  const [serviceFormData, setServiceFormData] = useState<ServiceFormData>({
     centro_id: "",
     orquest_service_id: "",
     descripcion: "",
   });
 
-  const [costCentreFormData, setCostCentreFormData] = useState({
+  // Cost centre dialog state
+  const [costCentreDialogOpen, setCostCentreDialogOpen] = useState(false);
+  const [editingCostCentre, setEditingCostCentre] = useState<CostCentre | null>(null);
+  const [costCentreFormData, setCostCentreFormData] = useState<CostCentreFormData>({
     centro_id: "",
     a3_centro_code: "",
     descripcion: "",
   });
 
-  // Fetch centres/restaurants with franchisee info
-  const { data: centres = [], isLoading: loadingCentres, error: centresError } = useQuery({
-    queryKey: ["restaurants_with_franchisees"],
-    queryFn: async () => {
-      console.info("[Restaurantes] Fetching via RPC get_restaurants_with_franchisees");
-      const { data, error } = await supabase
-        .rpc("get_restaurants_with_franchisees");
-      
-      if (error) {
-        console.error("[Restaurantes] Error fetching restaurants:", error);
-        toast.error("Error al cargar restaurantes: " + error.message);
-        throw error;
-      }
-      console.info("[Restaurantes] Fetched restaurants count:", data?.length || 0);
-      return (data || []).map(r => ({
-        id: r.id,
-        codigo: r.site_number || r.id,
-        nombre: r.name || "",
-        direccion: r.address,
-        ciudad: r.city,
-        pais: r.country || "España",
-        orquest_service_id: null,
-        orquest_business_id: null,
-        activo: true,
-        franchisee_id: r.franchisee_id,
-        franchisee_name: r.franchisee_name,
-        franchisee_email: r.franchisee_email,
-        company_tax_id: r.company_tax_id,
-        postal_code: r.postal_code,
-        state: r.state,
-        site_number: r.site_number,
-        seating_capacity: r.seating_capacity ? parseInt(r.seating_capacity) : null,
-        square_meters: r.square_meters ? parseFloat(r.square_meters) : null,
-        opening_date: r.opening_date,
-      })) as RestaurantWithFranchisee[];
-    },
-    enabled: isAdmin,
-    retry: 2,
-  });
+  // Gestor dialog state
+  const [gestorDialogOpen, setGestorDialogOpen] = useState(false);
+  const [selectedCentroForGestor, setSelectedCentroForGestor] = useState("");
 
-  // Fetch franchisees
-  const { data: franchisees = [], isLoading: loadingFranchisees } = useQuery({
-    queryKey: ["franchisees"],
-    queryFn: async () => {
-      console.info("[Restaurantes] Fetching franchisees");
-      const { data, error } = await supabase
-        .from("franchisees")
-        .select("*")
-        .order("name");
-      if (error) {
-        console.error("[Restaurantes] Error fetching franchisees:", error);
-        toast.error("Error al cargar franquiciados: " + error.message);
-        throw error;
-      }
-      console.info("[Restaurantes] Fetched franchisees count:", data?.length || 0);
-      return data as Franchisee[];
-    },
-    enabled: isAdmin,
-    retry: 2,
-  });
+  // Custom hooks
+  const {
+    restaurants,
+    isLoading: loadingRestaurants,
+    error: restaurantsError,
+    save: saveRestaurant,
+    isSaving: isSavingRestaurant,
+    toggleActive: toggleRestaurantActive,
+    testConnection,
+  } = useRestaurants(isAdmin);
 
-  // Fetch services count per restaurant
-  const { data: servicesCount = {} } = useQuery({
-    queryKey: ["services_count"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("restaurant_services")
-        .select("centro_id")
-        .eq("activo", true);
-      
-      if (error) {
-        console.error("[Restaurantes] Error fetching services count:", error);
-        toast.error("Error al contar servicios: " + error.message);
-        throw error;
-      }
-      
-      return data.reduce((acc, curr) => {
-        acc[curr.centro_id] = (acc[curr.centro_id] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-    },
-    enabled: isAdmin,
-    retry: 2,
-  });
+  const {
+    franchisees,
+    isLoading: loadingFranchisees,
+    save: saveFranchisee,
+    isSaving: isSavingFranchisee,
+    deleteFranchisee,
+  } = useFranchisees(isAdmin);
 
-  // Fetch all services
-  const { data: restaurantServices = [], isLoading: loadingServices } = useQuery({
-    queryKey: ["restaurant_services"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("restaurant_services")
-        .select(`
-          *,
-          centres:centro_id (
-            codigo,
-            nombre
-          )
-        `)
-        .order("created_at", { ascending: false });
-      if (error) {
-        console.error("[Restaurantes] Error fetching services:", error);
-        toast.error("Error al cargar servicios: " + error.message);
-        throw error;
-      }
-      return data as RestaurantService[];
-    },
-    enabled: isAdmin,
-    retry: 2,
-  });
+  const {
+    services,
+    servicesCount,
+    servicesByRestaurant,
+    isLoading: loadingServices,
+    save: saveService,
+    isSaving: isSavingService,
+    toggleActive: toggleServiceActive,
+  } = useServices(isAdmin);
 
-  // Fetch cost centres
-  const { data: costCentres = [], isLoading: loadingCostCentres } = useQuery({
-    queryKey: ["cost_centres"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("restaurant_cost_centres")
-        .select(`
-          *,
-          centres:centro_id (
-            codigo,
-            nombre
-          )
-        `)
-        .order("created_at", { ascending: false });
-      if (error) {
-        console.error("[Restaurantes] Error fetching cost centres:", error);
-        toast.error("Error al cargar centros de coste: " + error.message);
-        throw error;
-      }
-      return data as CostCentre[];
-    },
-    enabled: isAdmin,
-    retry: 2,
-  });
+  const {
+    costCentres,
+    isLoading: loadingCostCentres,
+    save: saveCostCentre,
+    isSaving: isSavingCostCentre,
+    toggleActive: toggleCostCentreActive,
+  } = useCostCentres(isAdmin);
 
-  // Fetch users with their roles
-  const { data: usersWithRoles = [], isLoading: loadingUsers } = useQuery({
-    queryKey: ["users_with_roles"],
-    queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*");
-      
-      if (profilesError) {
-        console.error("[Restaurantes] Error fetching profiles:", profilesError);
-        toast.error("Error al cargar perfiles: " + profilesError.message);
-        throw profilesError;
-      }
+  const {
+    usersWithRoles,
+    gestoresByCentro,
+    isLoading: loadingGestores,
+    assignGestor,
+    removeGestor,
+    autoAssign,
+  } = useGestores(isAdmin);
 
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("*");
-      
-      if (rolesError) {
-        console.error("[Restaurantes] Error fetching user roles:", rolesError);
-        toast.error("Error al cargar roles: " + rolesError.message);
-        throw rolesError;
-      }
-
-      return (profiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.email || "",
-        nombre: profile.nombre || "",
-        apellidos: profile.apellidos || "",
-        roles: userRoles?.filter(ur => ur.user_id === profile.id) || [],
-      }));
-    },
-    enabled: isAdmin,
-    retry: 2,
-  });
-
-  // Group franchisees by centro
-  const franchiseesByCentro = usersWithRoles.reduce((acc, user) => {
-    const gestorRoles = user.roles.filter(r => r.role === "gestor");
-    gestorRoles.forEach(role => {
-      if (role.centro) {
-        if (!acc[role.centro]) {
-          acc[role.centro] = [];
-        }
-        acc[role.centro].push({
-          userId: user.id,
-          email: user.email,
-          nombre: user.nombre,
-          apellidos: user.apellidos,
-          roleId: role.id,
-        });
-      }
+  // Restaurant handlers
+  const handleEditRestaurant = (restaurant: RestaurantWithFranchisee) => {
+    setEditingRestaurant(restaurant);
+    setRestaurantFormData({
+      codigo: restaurant.codigo,
+      nombre: restaurant.nombre,
+      direccion: restaurant.direccion || "",
+      ciudad: restaurant.ciudad || "",
+      pais: restaurant.pais,
+      postal_code: restaurant.postal_code || "",
+      state: restaurant.state || "",
+      site_number: restaurant.site_number || "",
+      franchisee_id: restaurant.franchisee_id,
+      seating_capacity: restaurant.seating_capacity || null,
+      square_meters: restaurant.square_meters || null,
+      opening_date: restaurant.opening_date || null,
+      orquest_business_id: restaurant.orquest_business_id || "",
+      orquest_service_id: restaurant.orquest_service_id || "",
     });
-    return acc;
-  }, {} as Record<string, Array<{ userId: string; email: string; nombre: string; apellidos: string; roleId: string }>>);
+    setRestaurantDialogOpen(true);
+  };
 
-  // Group services by restaurant
-  const servicesByRestaurant = restaurantServices?.reduce((acc, service) => {
-    const key = service.centro_id;
-    if (!acc[key]) {
-      acc[key] = {
-        restaurant: service.centres,
-        services: [],
-      };
-    }
-    acc[key].services.push(service);
-    return acc;
-  }, {} as Record<string, { restaurant: any; services: RestaurantService[] }>);
-
-  // Mutations for centres
-  const saveCentreMutation = useMutation({
-    mutationFn: async (data: typeof centreFormData) => {
-      // Map form data to Restaurants table structure
-      const restaurantData = {
-        site_number: data.codigo,
-        name: data.nombre,
-        address: data.direccion,
-        city: data.ciudad,
-        state: data.state,
-        country: data.pais,
-        postal_code: data.postal_code,
-        franchisee_id: data.franchisee_id,
-        seating_capacity: data.seating_capacity?.toString() || null,
-        square_meters: data.square_meters?.toString() || null,
-        opening_date: data.opening_date,
-      };
-
-      if (editingCentre) {
-        const { error } = await supabase
-          .from("Restaurants")
-          .update(restaurantData)
-          .eq("id", editingCentre.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("Restaurants")
-          .insert([restaurantData]);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["restaurants_with_franchisees"] });
-      queryClient.invalidateQueries({ queryKey: ["centres"] });
-      toast.success(editingCentre ? "Restaurante actualizado" : "Restaurante creado");
-      resetCentreForm();
-    },
-    onError: (error: any) => {
-      toast.error("Error al guardar: " + error.message);
-    },
-  });
-
-  const toggleCentreActiveMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const centre = centres.find(c => c.id === id);
-      if (!centre) return;
-      const { error } = await supabase
-        .from("centres")
-        .update({ activo: !centre.activo })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["centres"] });
-      toast.success("Estado actualizado");
-    },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
-    },
-  });
-
-  // Mutations for services
-  const saveServiceMutation = useMutation({
-    mutationFn: async (data: typeof serviceFormData) => {
-      if (editingService) {
-        const { error } = await supabase
-          .from("restaurant_services")
-          .update(data)
-          .eq("id", editingService.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("restaurant_services")
-          .insert([data]);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["restaurant_services"] });
-      queryClient.invalidateQueries({ queryKey: ["services_count"] });
-      toast.success(editingService ? "Service actualizado" : "Service creado");
-      resetServiceForm();
-    },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
-    },
-  });
-
-  const toggleServiceActiveMutation = useMutation({
-    mutationFn: async ({ id, activo }: { id: string; activo: boolean }) => {
-      const { error } = await supabase
-        .from("restaurant_services")
-        .update({ activo })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["restaurant_services"] });
-      queryClient.invalidateQueries({ queryKey: ["services_count"] });
-      toast.success("Estado actualizado");
-    },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
-    },
-  });
-
-  // Mutations for cost centres
-  const saveCostCentreMutation = useMutation({
-    mutationFn: async (data: typeof costCentreFormData) => {
-      if (editingCostCentre) {
-        const { error } = await supabase
-          .from("restaurant_cost_centres")
-          .update(data)
-          .eq("id", editingCostCentre.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("restaurant_cost_centres")
-          .insert([{ ...data, activo: true }]);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cost_centres"] });
-      toast.success(editingCostCentre ? "Centro de coste actualizado" : "Centro de coste creado");
-      resetCostCentreForm();
-    },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
-    },
-  });
-
-  const toggleCostCentreActiveMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const costCentre = costCentres.find(c => c.id === id);
-      if (!costCentre) return;
-      const { error } = await supabase
-        .from("restaurant_cost_centres")
-        .update({ activo: !costCentre.activo })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cost_centres"] });
-      toast.success("Estado actualizado");
-    },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
-    },
-  });
-
-  // Mutations for franchisees
-  const saveFranchiseeMutation = useMutation({
-    mutationFn: async (data: typeof franchiseeFormData) => {
-      if (editingFranchisee) {
-        const { error } = await supabase
-          .from("franchisees")
-          .update(data)
-          .eq("id", editingFranchisee.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("franchisees")
-          .insert([data]);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["franchisees"] });
-      queryClient.invalidateQueries({ queryKey: ["restaurants_with_franchisees"] });
-      toast.success(editingFranchisee ? "Franquiciado actualizado" : "Franquiciado creado");
-      resetFranchiseeDataForm();
-    },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
-    },
-  });
-
-  const deleteFranchiseeMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("franchisees")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["franchisees"] });
-      queryClient.invalidateQueries({ queryKey: ["restaurants_with_franchisees"] });
-      toast.success("Franquiciado eliminado");
-    },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
-    },
-  });
-
-  // Test connection
-  const testConnection = async (centreId: string) => {
-    const centre = centres.find(c => c.id === centreId);
-    if (!centre) return;
-
-    setTestingCentre(centreId);
-    try {
-      const { data, error } = await supabase.functions.invoke("test_orquest_connection", {
-        body: {
-          service_id: centre.orquest_service_id,
-          business_id: centre.orquest_business_id,
+  const handleSaveRestaurant = () => {
+    saveRestaurant(
+      { data: restaurantFormData, editingId: editingRestaurant?.id },
+      {
+        onSuccess: () => {
+          setRestaurantDialogOpen(false);
+          setEditingRestaurant(null);
+          setRestaurantFormData({
+            codigo: "",
+            nombre: "",
+            direccion: "",
+            ciudad: "",
+            pais: "España",
+            postal_code: "",
+            state: "",
+            site_number: "",
+            franchisee_id: null,
+            seating_capacity: null,
+            square_meters: null,
+            opening_date: null,
+            orquest_business_id: "",
+            orquest_service_id: "",
+          });
         },
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        toast.success(`✅ Conexión exitosa: ${data.employees_count} empleados encontrados`);
-      } else {
-        toast.error("Error en la conexión: " + data.message);
       }
-    } catch (error: any) {
-      toast.error("Error al probar conexión: " + error.message);
-    } finally {
-      setTestingCentre(null);
-    }
+    );
   };
 
-  // Form handlers
-  const resetCentreForm = () => {
-    setCentreFormData({
-      codigo: "",
-      nombre: "",
-      direccion: "",
-      ciudad: "",
-      pais: "España",
-      postal_code: "",
-      state: "",
-      site_number: "",
-      franchisee_id: null,
-      seating_capacity: null,
-      square_meters: null,
-      opening_date: null,
-      orquest_business_id: "",
-      orquest_service_id: "",
-    });
-    setEditingCentre(null);
-    setDialogOpen(false);
+  const handleTestConnection = async (centreId: string) => {
+    setTestingCentre(centreId);
+    await testConnection(centreId);
+    setTestingCentre(null);
   };
 
-  const resetFranchiseeDataForm = () => {
-    setFranchiseeFormData({
-      email: "",
-      name: "",
-      company_tax_id: "",
-    });
-    setEditingFranchisee(null);
-    setFranchiseeDataDialogOpen(false);
-  };
-
-  const resetServiceForm = () => {
-    setServiceFormData({
-      centro_id: "",
-      orquest_service_id: "",
-      descripcion: "",
-    });
-    setEditingService(null);
-    setServiceDialogOpen(false);
-  };
-
-  const resetCostCentreForm = () => {
-    setCostCentreFormData({
-      centro_id: "",
-      a3_centro_code: "",
-      descripcion: "",
-    });
-    setEditingCostCentre(null);
-    setCostCentreDialogOpen(false);
-  };
-
-  const handleEditCentre = (centre: RestaurantWithFranchisee) => {
-    setEditingCentre(centre);
-    setCentreFormData({
-      codigo: centre.codigo,
-      nombre: centre.nombre,
-      direccion: centre.direccion || "",
-      ciudad: centre.ciudad || "",
-      pais: centre.pais,
-      postal_code: (centre as any).postal_code || "",
-      state: (centre as any).state || "",
-      site_number: (centre as any).site_number || "",
-      franchisee_id: centre.franchisee_id,
-      seating_capacity: (centre as any).seating_capacity || null,
-      square_meters: (centre as any).square_meters || null,
-      opening_date: (centre as any).opening_date || null,
-      orquest_business_id: centre.orquest_business_id || "",
-      orquest_service_id: centre.orquest_service_id || "",
-    });
-    setDialogOpen(true);
-  };
-
+  // Franchisee handlers
   const handleEditFranchisee = (franchisee: Franchisee) => {
     setEditingFranchisee(franchisee);
     setFranchiseeFormData({
@@ -631,9 +207,23 @@ const Restaurantes = () => {
       name: franchisee.name,
       company_tax_id: franchisee.company_tax_id || "",
     });
-    setFranchiseeDataDialogOpen(true);
+    setFranchiseeDialogOpen(true);
   };
 
+  const handleSaveFranchisee = () => {
+    saveFranchisee(
+      { data: franchiseeFormData, editingId: editingFranchisee?.id },
+      {
+        onSuccess: () => {
+          setFranchiseeDialogOpen(false);
+          setEditingFranchisee(null);
+          setFranchiseeFormData({ email: "", name: "", company_tax_id: "" });
+        },
+      }
+    );
+  };
+
+  // Service handlers
   const handleEditService = (service: RestaurantService) => {
     setEditingService(service);
     setServiceFormData({
@@ -644,6 +234,20 @@ const Restaurantes = () => {
     setServiceDialogOpen(true);
   };
 
+  const handleSaveService = () => {
+    saveService(
+      { data: serviceFormData, editingId: editingService?.id },
+      {
+        onSuccess: () => {
+          setServiceDialogOpen(false);
+          setEditingService(null);
+          setServiceFormData({ centro_id: "", orquest_service_id: "", descripcion: "" });
+        },
+      }
+    );
+  };
+
+  // Cost centre handlers
   const handleEditCostCentre = (costCentre: CostCentre) => {
     setEditingCostCentre(costCentre);
     setCostCentreFormData({
@@ -654,46 +258,36 @@ const Restaurantes = () => {
     setCostCentreDialogOpen(true);
   };
 
-  // Mutation to assign franchisee
-  const assignFranchiseeMutation = useMutation({
-    mutationFn: async ({ userId, centroCodigo }: { userId: string; centroCodigo: string }) => {
-      const { error } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: userId,
-          role: "gestor",
-          centro: centroCodigo,
-        });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users_with_roles"] });
-      toast.success("Franquiciado asignado correctamente");
-      setFranchiseeDialogOpen(false);
-      setSelectedCentroForFranchisee("");
-    },
-    onError: (error: any) => {
-      toast.error("Error al asignar franquiciado: " + error.message);
-    },
-  });
+  const handleSaveCostCentre = () => {
+    saveCostCentre(
+      { data: costCentreFormData, editingId: editingCostCentre?.id },
+      {
+        onSuccess: () => {
+          setCostCentreDialogOpen(false);
+          setEditingCostCentre(null);
+          setCostCentreFormData({ centro_id: "", a3_centro_code: "", descripcion: "" });
+        },
+      }
+    );
+  };
 
-  // Mutation to remove franchisee
-  const removeFranchiseeMutation = useMutation({
-    mutationFn: async (roleId: string) => {
-      const { error } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("id", roleId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users_with_roles"] });
-      toast.success("Franquiciado removido correctamente");
-    },
-    onError: (error: any) => {
-      toast.error("Error al remover franquiciado: " + error.message);
-    },
-  });
+  // Gestor handlers
+  const handleAssignGestor = (centroCodigo: string) => {
+    setSelectedCentroForGestor(centroCodigo);
+    setGestorDialogOpen(true);
+  };
+
+  const handleGestorAssignment = (userId: string, centroCodigo: string) => {
+    assignGestor(
+      { userId, centroCodigo },
+      {
+        onSuccess: () => {
+          setGestorDialogOpen(false);
+          setSelectedCentroForGestor("");
+        },
+      }
+    );
+  };
 
   if (roleLoading) {
     return (
@@ -741,10 +335,10 @@ const Restaurantes = () => {
             <Info className="h-4 w-4" />
             <AlertTitle>Diagnóstico del Sistema</AlertTitle>
             <AlertDescription className="space-y-1">
-              <div>✅ Vista v_restaurants_with_franchisees: {centres.length} restaurantes cargados</div>
-              <div>✅ Tabla franchisees: {franchisees.length} franquiciados</div>
+              <div>✅ Restaurantes: {restaurants.length} cargados</div>
+              <div>✅ Franquiciados: {franchisees.length}</div>
               <div>✅ Services: {Object.keys(servicesCount).length} restaurantes con services</div>
-              {centresError && <div className="text-destructive">❌ Error en restaurantes: {(centresError as any).message}</div>}
+              {restaurantsError && <div className="text-destructive">❌ Error: {(restaurantsError as any).message}</div>}
             </AlertDescription>
           </Alert>
         )}
@@ -758,1146 +352,121 @@ const Restaurantes = () => {
             <TabsTrigger value="cost-centres">Centros de Coste A3</TabsTrigger>
           </TabsList>
 
-          {/* TAB: Datos Generales */}
           <TabsContent value="general" className="space-y-6">
             <div className="flex justify-end">
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button onClick={() => setRestaurantDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo Restaurante
               </Button>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Restaurantes Registrados</CardTitle>
-                <CardDescription>
-                  {centres.length} restaurante{centres.length !== 1 ? "s" : ""} en el sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingCentres ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Código</TableHead>
-                        <TableHead>Nombre</TableHead>
-                        <TableHead>Ciudad</TableHead>
-                        <TableHead>Franquiciado</TableHead>
-                        <TableHead>Business ID</TableHead>
-                        <TableHead>Services</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {centres.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                            No hay restaurantes registrados
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        centres.map((centre) => (
-                          <TableRow key={centre.id}>
-                            <TableCell>
-                              <Badge variant="outline" className="font-mono">
-                                {centre.codigo}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-medium">{centre.nombre}</TableCell>
-                            <TableCell>{centre.ciudad || "N/A"}</TableCell>
-                            <TableCell>
-                              {(centre as RestaurantWithFranchisee).franchisee_name ? (
-                                <div>
-                                  <div className="font-medium text-sm">
-                                    {(centre as RestaurantWithFranchisee).franchisee_name}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {(centre as RestaurantWithFranchisee).franchisee_email}
-                                  </div>
-                                </div>
-                              ) : (
-                                <Badge variant="outline">Sin asignar</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <code className="text-xs bg-muted px-2 py-1 rounded">
-                                {centre.orquest_business_id || "N/A"}
-                              </code>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="secondary">
-                                  {servicesCount[centre.id] || 0} service{servicesCount[centre.id] !== 1 ? "s" : ""}
-                                </Badge>
-                                {servicesCount[centre.id] > 0 && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setActiveTab("services")}
-                                  >
-                                    <ArrowRight className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={centre.activo ? "default" : "secondary"}>
-                                {centre.activo ? "Activo" : "Inactivo"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {centre.orquest_business_id && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => testConnection(centre.id)}
-                                    disabled={testingCentre === centre.id}
-                                  >
-                                    {testingCentre === centre.id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Wifi className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleEditCentre(centre)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => toggleCentreActiveMutation.mutate(centre.id)}
-                                  disabled={toggleCentreActiveMutation.isPending}
-                                >
-                                  {centre.activo ? (
-                                    <PowerOff className="h-4 w-4 text-red-600" />
-                                  ) : (
-                                    <Power className="h-4 w-4 text-green-600" />
-                                  )}
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+            <RestaurantsList
+              restaurants={restaurants}
+              servicesCount={servicesCount}
+              isLoading={loadingRestaurants}
+              testingCentre={testingCentre}
+              onEdit={handleEditRestaurant}
+              onToggleActive={toggleRestaurantActive}
+              onTestConnection={handleTestConnection}
+              onNavigateToServices={() => setActiveTab("services")}
+            />
           </TabsContent>
 
-          {/* TAB: Franquiciados - Datos de Negocio */}
-          <TabsContent value="franchisees-data" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <Alert className="flex-1 mr-4">
-                <Info className="h-4 w-4" />
-                <AlertTitle>Gestión de Franquiciados</AlertTitle>
-                <AlertDescription>
-                  Los franquiciados son los propietarios o gestores de negocio de los restaurantes.
-                  Aquí puedes gestionar su información (nombre, email, CIF).
-                </AlertDescription>
-              </Alert>
-              <Button onClick={() => setFranchiseeDataDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nuevo Franquiciado
-              </Button>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Franquiciados Registrados</CardTitle>
-                <CardDescription>
-                  {franchisees.length} franquiciado{franchisees.length !== 1 ? "s" : ""} en el sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingFranchisees ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nombre</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>CIF/NIF</TableHead>
-                        <TableHead>Restaurantes</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {franchisees.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                            No hay franquiciados registrados
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        franchisees.map((franchisee) => {
-                          const restaurantsCount = centres.filter(
-                            c => c.franchisee_id === franchisee.id
-                          ).length;
-                          return (
-                            <TableRow key={franchisee.id}>
-                              <TableCell className="font-medium">{franchisee.name}</TableCell>
-                              <TableCell>{franchisee.email}</TableCell>
-                              <TableCell>
-                                {franchisee.company_tax_id ? (
-                                  <code className="text-xs bg-muted px-2 py-1 rounded">
-                                    {franchisee.company_tax_id}
-                                  </code>
-                                ) : (
-                                  <span className="text-muted-foreground">N/A</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="secondary">
-                                  {restaurantsCount} restaurante{restaurantsCount !== 1 ? "s" : ""}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleEditFranchisee(franchisee)}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => {
-                                      if (restaurantsCount > 0) {
-                                        toast.error("No se puede eliminar: tiene restaurantes asignados");
-                                        return;
-                                      }
-                                      if (confirm("¿Eliminar franquiciado?")) {
-                                        deleteFranchiseeMutation.mutate(franchisee.id);
-                                      }
-                                    }}
-                                    disabled={restaurantsCount > 0 || deleteFranchiseeMutation.isPending}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="franchisees-data">
+            <FranchiseesTab
+              franchisees={franchisees}
+              restaurants={restaurants}
+              isLoading={loadingFranchisees}
+              onEdit={handleEditFranchisee}
+              onDelete={deleteFranchisee}
+              onNew={() => setFranchiseeDialogOpen(true)}
+            />
           </TabsContent>
 
-          {/* TAB: Gestores - Control de Acceso */}
-          <TabsContent value="franchisees" className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-              <Alert className="flex-1">
-                <Info className="h-4 w-4" />
-                <AlertTitle>Control de Acceso al Sistema</AlertTitle>
-                <AlertDescription>
-                  Los gestores tienen acceso limitado a los datos de su restaurante asignado.
-                  Esto es diferente a los franquiciados (propietarios del negocio).
-                  Desde aquí puedes asignar qué usuarios pueden acceder a qué restaurantes.
-                </AlertDescription>
-              </Alert>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => window.location.href = '/admin/import-restaurants'}
-                  variant="outline"
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Importar CSV
-                </Button>
-                <Button
-                  onClick={async () => {
-                    try {
-                      toast.info("Iniciando asignación automática...");
-                      const { data, error } = await supabase.functions.invoke("assign_franchisees");
-                      if (error) throw error;
-                      toast.success(`✅ ${data.created_users} usuarios creados, ${data.roles_assigned} roles asignados`);
-                      queryClient.invalidateQueries({ queryKey: ["users_with_roles"] });
-                    } catch (error: any) {
-                      toast.error("Error: " + error.message);
-                    }
-                  }}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Auto-asignar
-                </Button>
-              </div>
-            </div>
-
-            {loadingUsers || loadingCentres ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <Accordion type="multiple" className="space-y-4">
-                {centres.map((centre) => {
-                  const franchisees = franchiseesByCentro[centre.codigo] || [];
-                  return (
-                    <AccordionItem
-                      key={centre.id}
-                      value={centre.id}
-                      className="border rounded-lg bg-card"
-                    >
-                      <AccordionTrigger className="px-6 hover:no-underline">
-                        <div className="flex items-center gap-3">
-                          <Users className="h-5 w-5 text-primary" />
-                          <div className="text-left">
-                            <div className="font-semibold">{centre.nombre}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {centre.codigo} • {franchisees.length} franquiciado{franchisees.length !== 1 ? "s" : ""}
-                            </div>
-                          </div>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-6 pb-4">
-                        <div className="space-y-3 pt-3">
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setSelectedCentroForFranchisee(centre.codigo);
-                              setFranchiseeDialogOpen(true);
-                            }}
-                          >
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Añadir Franquiciado
-                          </Button>
-
-                          {franchisees.length === 0 ? (
-                            <div className="text-center text-muted-foreground py-8">
-                              No hay franquiciados asignados a este restaurante
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {franchisees.map((franchisee) => (
-                                <Card key={franchisee.roleId}>
-                                  <CardContent className="p-4">
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <div className="font-medium">
-                                          {franchisee.nombre} {franchisee.apellidos}
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                          {franchisee.email}
-                                        </div>
-                                      </div>
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => removeFranchiseeMutation.mutate(franchisee.roleId)}
-                                        disabled={removeFranchiseeMutation.isPending}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-            )}
+          <TabsContent value="franchisees">
+            <GestoresTab
+              restaurants={restaurants}
+              gestoresByCentro={gestoresByCentro}
+              isLoading={loadingGestores || loadingRestaurants}
+              onAssign={handleAssignGestor}
+              onRemove={removeGestor}
+              onAutoAssign={autoAssign}
+              onImportCSV={() => window.location.href = '/admin/import-restaurants'}
+            />
           </TabsContent>
 
-          {/* TAB: Services Orquest */}
-          <TabsContent value="services" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <Alert className="flex-1 mr-4">
-                <Info className="h-4 w-4" />
-                <AlertTitle>¿Qué son los Services?</AlertTitle>
-                <AlertDescription>
-                  Los Services de Orquest representan secciones operativas dentro de un
-                  restaurante (ej: cocina, salón, barra). Un restaurante puede tener
-                  múltiples services para organizar mejor la planificación.
-                </AlertDescription>
-              </Alert>
-              <Button onClick={() => setServiceDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Añadir Service
-              </Button>
-            </div>
-
-            {loadingServices ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <Accordion type="multiple" className="space-y-4">
-                {servicesByRestaurant && Object.entries(servicesByRestaurant).map(([centroId, { restaurant, services }]) => (
-                  <AccordionItem
-                    key={centroId}
-                    value={centroId}
-                    className="border rounded-lg bg-card"
-                  >
-                    <AccordionTrigger className="px-6 hover:no-underline">
-                      <div className="flex items-center gap-3">
-                        <Server className="h-5 w-5 text-primary" />
-                        <div className="text-left">
-                          <div className="font-semibold">{restaurant.nombre}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {restaurant.codigo} • {services.length} service{services.length !== 1 ? "s" : ""}
-                          </div>
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-6 pb-4">
-                      <div className="space-y-3 pt-3">
-                        {services.map((service) => (
-                          <Card key={service.id}>
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
-                                      {service.orquest_service_id}
-                                    </code>
-                                    <Badge variant={service.activo ? "default" : "secondary"}>
-                                      {service.activo ? "Activo" : "Inactivo"}
-                                    </Badge>
-                                  </div>
-                                  {service.descripcion && (
-                                    <p className="text-sm text-muted-foreground mt-2">
-                                      {service.descripcion}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleEditService(service)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={service.activo ? "destructive" : "default"}
-                                    onClick={() =>
-                                      toggleServiceActiveMutation.mutate({
-                                        id: service.id,
-                                        activo: !service.activo,
-                                      })
-                                    }
-                                  >
-                                    {service.activo ? (
-                                      <X className="h-4 w-4" />
-                                    ) : (
-                                      "Activar"
-                                    )}
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            )}
+          <TabsContent value="services">
+            <ServicesTab
+              servicesByRestaurant={servicesByRestaurant}
+              isLoading={loadingServices}
+              onEdit={handleEditService}
+              onToggleActive={toggleServiceActive}
+              onNew={() => setServiceDialogOpen(true)}
+            />
           </TabsContent>
 
-          {/* TAB: Centros de Coste A3 */}
-          <TabsContent value="cost-centres" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <Alert className="flex-1 mr-4">
-                <Info className="h-4 w-4" />
-                <AlertTitle>¿Para qué sirven los Centros de Coste?</AlertTitle>
-                <AlertDescription>
-                  Los centros de coste de A3Nom se mapean a restaurantes. Un restaurante puede
-                  tener múltiples centros de coste si su contabilidad está distribuida.
-                </AlertDescription>
-              </Alert>
-              <Button onClick={() => setCostCentreDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nuevo Centro de Coste
-              </Button>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Centros de Coste Registrados</CardTitle>
-                <CardDescription>
-                  {costCentres.length} centro{costCentres.length !== 1 ? "s" : ""} de coste
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingCostCentres ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Restaurante</TableHead>
-                        <TableHead>Código Restaurante</TableHead>
-                        <TableHead>Código A3</TableHead>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {costCentres.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                            No hay centros de coste registrados
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        costCentres.map((costCentre) => (
-                          <TableRow key={costCentre.id}>
-                            <TableCell className="font-medium">
-                              {costCentre.centres?.nombre || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="font-mono">
-                                {costCentre.centres?.codigo || "N/A"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <code className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                                {costCentre.a3_centro_code}
-                              </code>
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-sm text-muted-foreground">
-                                {costCentre.descripcion || "Sin descripción"}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={costCentre.activo ? "default" : "secondary"}>
-                                {costCentre.activo ? "Activo" : "Inactivo"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleEditCostCentre(costCentre)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => toggleCostCentreActiveMutation.mutate(costCentre.id)}
-                                  disabled={toggleCostCentreActiveMutation.isPending}
-                                >
-                                  <Power
-                                    className={`h-4 w-4 ${
-                                      costCentre.activo ? "text-green-600" : "text-gray-400"
-                                    }`}
-                                  />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="cost-centres">
+            <CostCentresTab
+              costCentres={costCentres}
+              isLoading={loadingCostCentres}
+              onEdit={handleEditCostCentre}
+              onToggleActive={toggleCostCentreActive}
+              onNew={() => setCostCentreDialogOpen(true)}
+            />
           </TabsContent>
         </Tabs>
 
-        {/* Dialog: Nuevo/Editar Restaurante */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingCentre ? "Editar Restaurante" : "Nuevo Restaurante"}
-              </DialogTitle>
-              <DialogDescription>
-                Completa la información del restaurante y su configuración Orquest
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                saveCentreMutation.mutate(centreFormData);
-              }}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="codigo">
-                    Código <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="codigo"
-                    value={centreFormData.codigo}
-                    onChange={(e) =>
-                      setCentreFormData({ ...centreFormData, codigo: e.target.value })
-                    }
-                    placeholder="Ej: MAD-001"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="site_number">Site Number</Label>
-                  <Input
-                    id="site_number"
-                    value={centreFormData.site_number}
-                    onChange={(e) =>
-                      setCentreFormData({ ...centreFormData, site_number: e.target.value })
-                    }
-                    placeholder="Ej: 12345"
-                  />
-                </div>
-              </div>
+        {/* Dialogs */}
+        <RestaurantDialog
+          open={restaurantDialogOpen}
+          onOpenChange={setRestaurantDialogOpen}
+          formData={restaurantFormData}
+          onFormDataChange={setRestaurantFormData}
+          franchisees={franchisees}
+          isEditing={!!editingRestaurant}
+          isSaving={isSavingRestaurant}
+          onSubmit={handleSaveRestaurant}
+        />
 
-              <div className="space-y-2">
-                <Label htmlFor="nombre">
-                  Nombre <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="nombre"
-                  value={centreFormData.nombre}
-                  onChange={(e) =>
-                    setCentreFormData({ ...centreFormData, nombre: e.target.value })
-                  }
-                  placeholder="Ej: McDonald's Madrid Centro"
-                  required
-                />
-              </div>
+        <FranchiseeDialog
+          open={franchiseeDialogOpen}
+          onOpenChange={setFranchiseeDialogOpen}
+          formData={franchiseeFormData}
+          onFormDataChange={setFranchiseeFormData}
+          isEditing={!!editingFranchisee}
+          isSaving={isSavingFranchisee}
+          onSubmit={handleSaveFranchisee}
+        />
 
-              <div className="space-y-2">
-                <Label htmlFor="direccion">Dirección</Label>
-                <Input
-                  id="direccion"
-                  value={centreFormData.direccion}
-                  onChange={(e) =>
-                    setCentreFormData({ ...centreFormData, direccion: e.target.value })
-                  }
-                  placeholder="Calle, número"
-                />
-              </div>
+        <ServiceDialog
+          open={serviceDialogOpen}
+          onOpenChange={setServiceDialogOpen}
+          formData={serviceFormData}
+          onFormDataChange={setServiceFormData}
+          restaurants={restaurants}
+          isEditing={!!editingService}
+          isSaving={isSavingService}
+          onSubmit={handleSaveService}
+        />
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="ciudad">Ciudad</Label>
-                  <Input
-                    id="ciudad"
-                    value={centreFormData.ciudad}
-                    onChange={(e) =>
-                      setCentreFormData({ ...centreFormData, ciudad: e.target.value })
-                    }
-                    placeholder="Madrid"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">Provincia</Label>
-                  <Input
-                    id="state"
-                    value={centreFormData.state}
-                    onChange={(e) =>
-                      setCentreFormData({ ...centreFormData, state: e.target.value })
-                    }
-                    placeholder="Madrid"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="postal_code">Código Postal</Label>
-                  <Input
-                    id="postal_code"
-                    value={centreFormData.postal_code}
-                    onChange={(e) =>
-                      setCentreFormData({ ...centreFormData, postal_code: e.target.value })
-                    }
-                    placeholder="28001"
-                  />
-                </div>
-              </div>
+        <CostCentreDialog
+          open={costCentreDialogOpen}
+          onOpenChange={setCostCentreDialogOpen}
+          formData={costCentreFormData}
+          onFormDataChange={setCostCentreFormData}
+          restaurants={restaurants}
+          isEditing={!!editingCostCentre}
+          isSaving={isSavingCostCentre}
+          onSubmit={handleSaveCostCentre}
+        />
 
-              <div className="space-y-2">
-                <Label htmlFor="pais">País</Label>
-                <Input
-                  id="pais"
-                  value={centreFormData.pais}
-                  onChange={(e) =>
-                    setCentreFormData({ ...centreFormData, pais: e.target.value })
-                  }
-                  placeholder="España"
-                />
-              </div>
-
-              <div className="border-t pt-4 space-y-4">
-                <h3 className="font-semibold text-sm">Información del Franquiciado</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="franchisee_id">Franquiciado</Label>
-                  <Select
-                    value={centreFormData.franchisee_id || ""}
-                    onValueChange={(value) => 
-                      setCentreFormData({ ...centreFormData, franchisee_id: value || null })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar franquiciado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Ninguno</SelectItem>
-                      {franchisees.map((f) => (
-                        <SelectItem key={f.id} value={f.id}>
-                          {f.name} ({f.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Gestiona los franquiciados en la pestaña "Franquiciados"
-                  </p>
-                </div>
-              </div>
-
-              <div className="border-t pt-4 space-y-4">
-                <h3 className="font-semibold text-sm">Detalles del Local</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="seating_capacity">Capacidad</Label>
-                    <Input
-                      id="seating_capacity"
-                      type="number"
-                      value={centreFormData.seating_capacity || ""}
-                      onChange={(e) =>
-                        setCentreFormData({ 
-                          ...centreFormData, 
-                          seating_capacity: e.target.value ? parseInt(e.target.value) : null 
-                        })
-                      }
-                      placeholder="Ej: 50"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="square_meters">M² Superficie</Label>
-                    <Input
-                      id="square_meters"
-                      type="number"
-                      step="0.01"
-                      value={centreFormData.square_meters || ""}
-                      onChange={(e) =>
-                        setCentreFormData({ 
-                          ...centreFormData, 
-                          square_meters: e.target.value ? parseFloat(e.target.value) : null 
-                        })
-                      }
-                      placeholder="Ej: 150.5"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="opening_date">Fecha Apertura</Label>
-                  <Input
-                    id="opening_date"
-                    type="date"
-                    value={centreFormData.opening_date || ""}
-                    onChange={(e) =>
-                      setCentreFormData({ ...centreFormData, opening_date: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="border-t pt-4 space-y-4">
-                <h3 className="font-semibold text-sm">Configuración Orquest</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="orquest_business_id">Business ID</Label>
-                    <Input
-                      id="orquest_business_id"
-                      value={centreFormData.orquest_business_id}
-                      onChange={(e) =>
-                        setCentreFormData({
-                          ...centreFormData,
-                          orquest_business_id: e.target.value,
-                        })
-                      }
-                      placeholder="Ej: B001"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="orquest_service_id">Service ID</Label>
-                    <Input
-                      id="orquest_service_id"
-                      value={centreFormData.orquest_service_id}
-                      onChange={(e) =>
-                        setCentreFormData({
-                          ...centreFormData,
-                          orquest_service_id: e.target.value,
-                        })
-                      }
-                      placeholder="Ej: S001"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Los services también se pueden configurar en la pestaña "Services Orquest"
-                </p>
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={resetCentreForm}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={saveCentreMutation.isPending}>
-                  {saveCentreMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {editingCentre ? "Actualizar" : "Crear"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Dialog: Nuevo/Editar Service */}
-        <Dialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingService ? "Editar Service" : "Añadir Nuevo Service"}
-              </DialogTitle>
-              <DialogDescription>
-                {editingService
-                  ? "Modifica la información del service"
-                  : "Asocia un nuevo service de Orquest a un restaurante"}
-              </DialogDescription>
-            </DialogHeader>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                saveServiceMutation.mutate(serviceFormData);
-              }}
-              className="space-y-4"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="service_centro_id">Restaurante</Label>
-                <Select
-                  value={serviceFormData.centro_id}
-                  onValueChange={(val) =>
-                    setServiceFormData({ ...serviceFormData, centro_id: val })
-                  }
-                >
-                  <SelectTrigger id="service_centro_id">
-                    <SelectValue placeholder="Seleccionar restaurante" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {centres.map((centre) => (
-                      <SelectItem key={centre.id} value={centre.id}>
-                        {centre.nombre} ({centre.codigo})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="orquest_service_id">Service ID de Orquest</Label>
-                <Input
-                  id="orquest_service_id"
-                  value={serviceFormData.orquest_service_id}
-                  onChange={(e) =>
-                    setServiceFormData({
-                      ...serviceFormData,
-                      orquest_service_id: e.target.value,
-                    })
-                  }
-                  placeholder="ej: S001"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="service_descripcion">Descripción (opcional)</Label>
-                <Textarea
-                  id="service_descripcion"
-                  value={serviceFormData.descripcion}
-                  onChange={(e) =>
-                    setServiceFormData({
-                      ...serviceFormData,
-                      descripcion: e.target.value,
-                    })
-                  }
-                  placeholder="ej: Cocina principal"
-                  rows={3}
-                />
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={resetServiceForm}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={saveServiceMutation.isPending}>
-                  {saveServiceMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {editingService ? "Actualizar" : "Crear"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Dialog: Nuevo/Editar Centro de Coste */}
-        <Dialog open={costCentreDialogOpen} onOpenChange={setCostCentreDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingCostCentre ? "Editar Centro de Coste" : "Nuevo Centro de Coste"}
-              </DialogTitle>
-              <DialogDescription>
-                Mapea un restaurante con su código de centro de coste en A3Nom
-              </DialogDescription>
-            </DialogHeader>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                saveCostCentreMutation.mutate(costCentreFormData);
-              }}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cost_centro_id">
-                    Restaurante <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={costCentreFormData.centro_id}
-                    onValueChange={(val) =>
-                      setCostCentreFormData({ ...costCentreFormData, centro_id: val })
-                    }
-                  >
-                    <SelectTrigger id="cost_centro_id">
-                      <SelectValue placeholder="Seleccionar restaurante" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {centres.map((centre) => (
-                        <SelectItem key={centre.id} value={centre.id}>
-                          {centre.nombre} ({centre.codigo})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="a3_centro_code">
-                    Código Centro A3 <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="a3_centro_code"
-                    value={costCentreFormData.a3_centro_code}
-                    onChange={(e) =>
-                      setCostCentreFormData({
-                        ...costCentreFormData,
-                        a3_centro_code: e.target.value,
-                      })
-                    }
-                    placeholder="Ej: CC001"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cost_descripcion">Descripción (opcional)</Label>
-                <Input
-                  id="cost_descripcion"
-                  value={costCentreFormData.descripcion}
-                  onChange={(e) =>
-                    setCostCentreFormData({
-                      ...costCentreFormData,
-                      descripcion: e.target.value,
-                    })
-                  }
-                  placeholder="Descripción del centro de coste"
-                />
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={resetCostCentreForm}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={saveCostCentreMutation.isPending}>
-                  {saveCostCentreMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {editingCostCentre ? "Actualizar" : "Crear"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Dialog: Asignar Franquiciado */}
-        <Dialog open={franchiseeDialogOpen} onOpenChange={setFranchiseeDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Asignar Gestor</DialogTitle>
-              <DialogDescription>
-                Selecciona un usuario para darle acceso como gestor del restaurante
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Seleccionar Usuario</Label>
-                <Select
-                  onValueChange={(userId) => {
-                    if (userId && selectedCentroForFranchisee) {
-                      assignFranchiseeMutation.mutate({
-                        userId,
-                        centroCodigo: selectedCentroForFranchisee,
-                      });
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un usuario" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {usersWithRoles
-                      .filter(user => {
-                        // Filter out users already assigned to this centro
-                        const existingAssignment = user.roles.find(
-                          r => r.role === "gestor" && r.centro === selectedCentroForFranchisee
-                        );
-                        return !existingAssignment;
-                      })
-                      .map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.nombre} {user.apellidos} ({user.email})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setFranchiseeDialogOpen(false);
-                  setSelectedCentroForFranchisee("");
-                }}
-              >
-                Cancelar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Dialog: Nuevo/Editar Franquiciado (Datos de Negocio) */}
-        <Dialog open={franchiseeDataDialogOpen} onOpenChange={setFranchiseeDataDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingFranchisee ? "Editar Franquiciado" : "Nuevo Franquiciado"}
-              </DialogTitle>
-              <DialogDescription>
-                Gestiona la información del propietario/franquiciado del restaurante
-              </DialogDescription>
-            </DialogHeader>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                saveFranchiseeMutation.mutate(franchiseeFormData);
-              }}
-              className="space-y-4"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="franchisee_name">
-                  Nombre <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="franchisee_name"
-                  value={franchiseeFormData.name}
-                  onChange={(e) =>
-                    setFranchiseeFormData({ ...franchiseeFormData, name: e.target.value })
-                  }
-                  placeholder="Nombre completo del franquiciado"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="franchisee_email_data">
-                  Email <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="franchisee_email_data"
-                  type="email"
-                  value={franchiseeFormData.email}
-                  onChange={(e) =>
-                    setFranchiseeFormData({ ...franchiseeFormData, email: e.target.value })
-                  }
-                  placeholder="email@example.com"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="franchisee_tax_id">CIF/NIF</Label>
-                <Input
-                  id="franchisee_tax_id"
-                  value={franchiseeFormData.company_tax_id}
-                  onChange={(e) =>
-                    setFranchiseeFormData({ ...franchiseeFormData, company_tax_id: e.target.value })
-                  }
-                  placeholder="A12345678"
-                />
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={resetFranchiseeDataForm}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={saveFranchiseeMutation.isPending}>
-                  {saveFranchiseeMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {editingFranchisee ? "Actualizar" : "Crear"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <AssignGestorDialog
+          open={gestorDialogOpen}
+          onOpenChange={setGestorDialogOpen}
+          users={usersWithRoles}
+          selectedCentro={selectedCentroForGestor}
+          onAssign={handleGestorAssignment}
+        />
       </div>
     </Layout>
   );
