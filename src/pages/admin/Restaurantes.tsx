@@ -18,7 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { 
   Building2, Plus, Pencil, Power, PowerOff, Loader2, RefreshCw, Wifi, Info, 
-  Server, DollarSign, Edit, X, ArrowRight
+  Server, DollarSign, Edit, X, ArrowRight, Users, UserPlus, Trash2
 } from "lucide-react";
 
 interface Centre {
@@ -65,10 +65,12 @@ const Restaurantes = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [costCentreDialogOpen, setCostCentreDialogOpen] = useState(false);
+  const [franchiseeDialogOpen, setFranchiseeDialogOpen] = useState(false);
   const [testingCentre, setTestingCentre] = useState<string | null>(null);
   const [editingCentre, setEditingCentre] = useState<Centre | null>(null);
   const [editingService, setEditingService] = useState<RestaurantService | null>(null);
   const [editingCostCentre, setEditingCostCentre] = useState<CostCentre | null>(null);
+  const [selectedCentroForFranchisee, setSelectedCentroForFranchisee] = useState<string>("");
   
   const [centreFormData, setCentreFormData] = useState({
     codigo: "",
@@ -163,6 +165,53 @@ const Restaurantes = () => {
     },
     enabled: isAdmin,
   });
+
+  // Fetch users with their roles
+  const { data: usersWithRoles = [], isLoading: loadingUsers } = useQuery({
+    queryKey: ["users_with_roles"],
+    queryFn: async () => {
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("*");
+      
+      if (profilesError) throw profilesError;
+
+      const { data: userRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("*");
+      
+      if (rolesError) throw rolesError;
+
+      return (profiles || []).map(profile => ({
+        id: profile.id,
+        email: profile.email || "",
+        nombre: profile.nombre || "",
+        apellidos: profile.apellidos || "",
+        roles: userRoles?.filter(ur => ur.user_id === profile.id) || [],
+      }));
+    },
+    enabled: isAdmin,
+  });
+
+  // Group franchisees by centro
+  const franchiseesByCentro = usersWithRoles.reduce((acc, user) => {
+    const gestorRoles = user.roles.filter(r => r.role === "gestor");
+    gestorRoles.forEach(role => {
+      if (role.centro) {
+        if (!acc[role.centro]) {
+          acc[role.centro] = [];
+        }
+        acc[role.centro].push({
+          userId: user.id,
+          email: user.email,
+          nombre: user.nombre,
+          apellidos: user.apellidos,
+          roleId: role.id,
+        });
+      }
+    });
+    return acc;
+  }, {} as Record<string, Array<{ userId: string; email: string; nombre: string; apellidos: string; roleId: string }>>);
 
   // Group services by restaurant
   const servicesByRestaurant = restaurantServices?.reduce((acc, service) => {
@@ -407,6 +456,47 @@ const Restaurantes = () => {
     setCostCentreDialogOpen(true);
   };
 
+  // Mutation to assign franchisee
+  const assignFranchiseeMutation = useMutation({
+    mutationFn: async ({ userId, centroCodigo }: { userId: string; centroCodigo: string }) => {
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: userId,
+          role: "gestor",
+          centro: centroCodigo,
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users_with_roles"] });
+      toast.success("Franquiciado asignado correctamente");
+      setFranchiseeDialogOpen(false);
+      setSelectedCentroForFranchisee("");
+    },
+    onError: (error: any) => {
+      toast.error("Error al asignar franquiciado: " + error.message);
+    },
+  });
+
+  // Mutation to remove franchisee
+  const removeFranchiseeMutation = useMutation({
+    mutationFn: async (roleId: string) => {
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("id", roleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users_with_roles"] });
+      toast.success("Franquiciado removido correctamente");
+    },
+    onError: (error: any) => {
+      toast.error("Error al remover franquiciado: " + error.message);
+    },
+  });
+
   if (roleLoading) {
     return (
       <Layout>
@@ -450,6 +540,7 @@ const Restaurantes = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="general">Datos Generales</TabsTrigger>
+            <TabsTrigger value="franchisees">Franquiciados</TabsTrigger>
             <TabsTrigger value="services">Services Orquest</TabsTrigger>
             <TabsTrigger value="cost-centres">Centros de Coste A3</TabsTrigger>
           </TabsList>
@@ -576,6 +667,98 @@ const Restaurantes = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* TAB: Franquiciados/Gestores */}
+          <TabsContent value="franchisees" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <Alert className="flex-1 mr-4">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Gestión de Franquiciados</AlertTitle>
+                <AlertDescription>
+                  Los franquiciados (gestores) tienen acceso limitado a los datos de su restaurante asignado.
+                  Desde aquí puedes asignar gestores a cada restaurante.
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            {loadingUsers || loadingCentres ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <Accordion type="multiple" className="space-y-4">
+                {centres.map((centre) => {
+                  const franchisees = franchiseesByCentro[centre.codigo] || [];
+                  return (
+                    <AccordionItem
+                      key={centre.id}
+                      value={centre.id}
+                      className="border rounded-lg bg-card"
+                    >
+                      <AccordionTrigger className="px-6 hover:no-underline">
+                        <div className="flex items-center gap-3">
+                          <Users className="h-5 w-5 text-primary" />
+                          <div className="text-left">
+                            <div className="font-semibold">{centre.nombre}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {centre.codigo} • {franchisees.length} franquiciado{franchisees.length !== 1 ? "s" : ""}
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-4">
+                        <div className="space-y-3 pt-3">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCentroForFranchisee(centre.codigo);
+                              setFranchiseeDialogOpen(true);
+                            }}
+                          >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Añadir Franquiciado
+                          </Button>
+
+                          {franchisees.length === 0 ? (
+                            <div className="text-center text-muted-foreground py-8">
+                              No hay franquiciados asignados a este restaurante
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {franchisees.map((franchisee) => (
+                                <Card key={franchisee.roleId}>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="font-medium">
+                                          {franchisee.nombre} {franchisee.apellidos}
+                                        </div>
+                                        <div className="text-sm text-muted-foreground">
+                                          {franchisee.email}
+                                        </div>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => removeFranchiseeMutation.mutate(franchisee.roleId)}
+                                        disabled={removeFranchiseeMutation.isPending}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            )}
           </TabsContent>
 
           {/* TAB: Services Orquest */}
@@ -1081,6 +1264,64 @@ const Restaurantes = () => {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog: Asignar Franquiciado */}
+        <Dialog open={franchiseeDialogOpen} onOpenChange={setFranchiseeDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Asignar Franquiciado</DialogTitle>
+              <DialogDescription>
+                Selecciona un usuario para asignarlo como gestor del restaurante
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Seleccionar Usuario</Label>
+                <Select
+                  onValueChange={(userId) => {
+                    if (userId && selectedCentroForFranchisee) {
+                      assignFranchiseeMutation.mutate({
+                        userId,
+                        centroCodigo: selectedCentroForFranchisee,
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un usuario" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usersWithRoles
+                      .filter(user => {
+                        // Filter out users already assigned to this centro
+                        const existingAssignment = user.roles.find(
+                          r => r.role === "gestor" && r.centro === selectedCentroForFranchisee
+                        );
+                        return !existingAssignment;
+                      })
+                      .map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.nombre} {user.apellidos} ({user.email})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setFranchiseeDialogOpen(false);
+                  setSelectedCentroForFranchisee("");
+                }}
+              >
+                Cancelar
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
