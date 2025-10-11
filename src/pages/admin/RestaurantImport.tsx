@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 
 interface CsvRow {
   [key: string]: string | number | null;
@@ -24,6 +25,8 @@ interface ValidationError {
   row: number;
   field: string;
   message: string;
+  value?: any;
+  isCritical?: boolean;
 }
 
 interface ImportResult {
@@ -78,6 +81,8 @@ export default function RestaurantImport() {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [forceImport, setForceImport] = useState(false);
+  const [autoDetectedColumns, setAutoDetectedColumns] = useState<string[]>([]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -114,6 +119,7 @@ export default function RestaurantImport() {
       
       console.log("Auto-detected mapping:", detectedMapping);
       setColumnMapping(detectedMapping);
+      setAutoDetectedColumns(Object.values(detectedMapping));
       setStep(2);
       toast.success(`Archivo cargado: ${json.length} registros`);
     };
@@ -162,6 +168,8 @@ export default function RestaurantImport() {
             row: index + 1,
             field,
             message: `Campo requerido "${field}" está vacío`,
+            value: mappedRow[field],
+            isCritical: true,
           });
         }
       });
@@ -173,7 +181,9 @@ export default function RestaurantImport() {
           errors.push({
             row: index + 1,
             field: "site_number",
-            message: `Número de sitio duplicado: ${siteNum}`,
+            message: `Número de sitio duplicado`,
+            value: siteNum,
+            isCritical: true,
           });
         }
         seenSiteNumbers.add(siteNum);
@@ -187,6 +197,8 @@ export default function RestaurantImport() {
             row: index + 1,
             field: "franchisee_email",
             message: "Formato de email inválido",
+            value: email,
+            isCritical: false,
           });
         }
       }
@@ -200,6 +212,8 @@ export default function RestaurantImport() {
             row: index + 1,
             field: "opening_date",
             message: "Formato de fecha inválido",
+            value: dateStr,
+            isCritical: false,
           });
         }
       }
@@ -207,11 +221,19 @@ export default function RestaurantImport() {
 
     setValidationErrors(errors);
     
+    const criticalErrors = errors.filter(e => e.isCritical);
+    const minorErrors = errors.filter(e => !e.isCritical);
+    
     if (errors.length === 0) {
       setStep(3);
       toast.success("Validación completada sin errores");
     } else {
-      toast.error(`Se encontraron ${errors.length} errores de validación`);
+      setStep(3);
+      if (criticalErrors.length > 0) {
+        toast.error(`${criticalErrors.length} errores críticos encontrados`);
+      } else {
+        toast.warning(`${minorErrors.length} advertencias encontradas (puedes forzar la importación)`);
+      }
     }
   };
 
@@ -396,6 +418,22 @@ export default function RestaurantImport() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {autoDetectedColumns.length > 0 && (
+                  <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                    <h3 className="font-semibold mb-2 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-primary" />
+                      Columnas Auto-detectadas
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {autoDetectedColumns.map((col, idx) => (
+                        <Badge key={idx} variant="secondary">
+                          {col}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   {csvData.length > 0 && Object.keys(csvData[0]).map((csvCol) => (
                     <div key={csvCol} className="flex items-center gap-4">
@@ -418,6 +456,11 @@ export default function RestaurantImport() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {columnMapping[csvCol] && (
+                        <Badge variant="outline" className="ml-2">
+                          ✓
+                        </Badge>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -447,12 +490,16 @@ export default function RestaurantImport() {
                   <div className="mb-6 p-4 bg-destructive/10 rounded-lg">
                     <h3 className="font-semibold text-destructive mb-2 flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5" />
-                      {validationErrors.length} Errores de Validación
+                      {validationErrors.filter(e => e.isCritical).length} Errores Críticos, {validationErrors.filter(e => !e.isCritical).length} Advertencias
                     </h3>
                     <div className="max-h-48 overflow-y-auto space-y-1">
                       {validationErrors.slice(0, 10).map((error, idx) => (
                         <p key={idx} className="text-sm">
+                          <Badge variant={error.isCritical ? "destructive" : "secondary"} className="mr-2">
+                            {error.isCritical ? "CRÍTICO" : "Advertencia"}
+                          </Badge>
                           Fila {error.row}, campo "{error.field}": {error.message}
+                          {error.value && <span className="font-mono ml-2 text-muted-foreground">({String(error.value)})</span>}
                         </p>
                       ))}
                       {validationErrors.length > 10 && (
@@ -461,6 +508,19 @@ export default function RestaurantImport() {
                         </p>
                       )}
                     </div>
+                    
+                    {validationErrors.some(e => !e.isCritical) && (
+                      <div className="mt-4 flex items-center gap-3 p-3 bg-background rounded border">
+                        <Switch
+                          id="force-import"
+                          checked={forceImport}
+                          onCheckedChange={setForceImport}
+                        />
+                        <Label htmlFor="force-import" className="cursor-pointer">
+                          Forzar importación ignorando advertencias (errores críticos seguirán bloqueando)
+                        </Label>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -524,7 +584,14 @@ export default function RestaurantImport() {
                   <Button variant="outline" onClick={() => setStep(2)}>
                     Volver
                   </Button>
-                  <Button onClick={performImport} disabled={importing || validationErrors.length > 0}>
+                  <Button 
+                    onClick={performImport} 
+                    disabled={
+                      importing || 
+                      (validationErrors.filter(e => e.isCritical).length > 0) ||
+                      (validationErrors.filter(e => !e.isCritical).length > 0 && !forceImport)
+                    }
+                  >
                     {importing ? "Importando..." : "Iniciar Importación"}
                   </Button>
                 </div>
