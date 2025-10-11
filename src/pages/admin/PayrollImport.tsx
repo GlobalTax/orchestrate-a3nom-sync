@@ -579,15 +579,15 @@ const PayrollImport = () => {
               <div className="space-y-2">
                 <Label htmlFor="centro-select">Restaurante de destino (opcional)</Label>
                 <Select
-                  value={selectedCentro || ""}
-                  onValueChange={(val) => setSelectedCentro(val || null)}
+                  value={selectedCentro || "all"}
+                  onValueChange={(val) => setSelectedCentro(val === "all" ? null : val)}
                 >
                   <SelectTrigger id="centro-select">
                     <Building2 className="mr-2 h-4 w-4" />
                     <SelectValue placeholder="Todos los restaurantes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los restaurantes</SelectItem>
+                    <SelectItem value="all">Todos los restaurantes</SelectItem>
                     {centres.map((centro) => (
                       <SelectItem key={centro.codigo} value={centro.codigo}>
                         {centro.nombre} ({centro.codigo})
@@ -696,15 +696,15 @@ const PayrollImport = () => {
                   {OPTIONAL_FIELDS.map(field => (
                     <div key={field.key} className="grid grid-cols-2 gap-4 items-center">
                       <Label>{field.label}</Label>
-                      <Select
-                        value={columnMapping[field.key] || ""}
-                        onValueChange={value => handleMappingChange(field.key, value)}
-                      >
+                        <Select
+                          value={columnMapping[field.key] || "__none__"}
+                          onValueChange={value => handleMappingChange(field.key, value === "__none__" ? "" : value)}
+                        >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar columna" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Sin mapear</SelectItem>
+                          <SelectItem value="__none__">Sin mapear</SelectItem>
                           {headers.map(header => (
                             <SelectItem key={header} value={header}>
                               {header}
