@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "https://esm.sh/resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,9 +12,9 @@ interface FranchiseeData {
   name: string;
   restaurants: Array<{
     id: string;
-    codigo: string;
-    nombre: string;
-    ciudad: string;
+    codigo: string; // site_number
+    nombre: string; // name
+    ciudad: string; // city
   }>;
 }
 
@@ -39,38 +39,37 @@ serve(async (req) => {
 
     console.log("🚀 Iniciando asignación de franquiciados...");
 
-    // 1. Obtener todos los restaurantes con franquiciado asignado
-    const { data: centres, error: centresError } = await supabaseClient
-      .from("centres")
-      .select("id, codigo, nombre, ciudad, franchisee_email, franchisee_name")
-      .not("franchisee_email", "is", null)
-      .eq("activo", true);
+    // 1. Obtener todos los restaurantes con franquiciado asignado desde la vista
+    const { data: restaurants, error: restaurantsError } = await supabaseClient
+      .from("v_restaurants_with_franchisees")
+      .select("id, site_number, name, city, franchisee_email, franchisee_name")
+      .not("franchisee_email", "is", null);
 
-    if (centresError) {
-      throw centresError;
+    if (restaurantsError) {
+      throw restaurantsError;
     }
 
-    console.log(`📊 Encontrados ${centres?.length || 0} restaurantes con franquiciado`);
+    console.log(`📊 Encontrados ${restaurants?.length || 0} restaurantes con franquiciado`);
 
     // 2. Agrupar restaurantes por email de franquiciado
     const franchiseeMap = new Map<string, FranchiseeData>();
 
-    centres?.forEach((centre) => {
-      const email = centre.franchisee_email!.toLowerCase().trim();
+    restaurants?.forEach((restaurant) => {
+      const email = restaurant.franchisee_email!.toLowerCase().trim();
       
       if (!franchiseeMap.has(email)) {
         franchiseeMap.set(email, {
           email,
-          name: centre.franchisee_name || email.split("@")[0],
+          name: restaurant.franchisee_name || email.split("@")[0],
           restaurants: [],
         });
       }
 
       franchiseeMap.get(email)!.restaurants.push({
-        id: centre.id,
-        codigo: centre.codigo,
-        nombre: centre.nombre,
-        ciudad: centre.ciudad || "",
+        id: restaurant.id,
+        codigo: restaurant.site_number,
+        nombre: restaurant.name,
+        ciudad: restaurant.city || "",
       });
     });
 
@@ -155,7 +154,7 @@ serve(async (req) => {
             });
 
             console.log(`  ✉️ Email enviado a ${email}`);
-          } catch (emailError) {
+          } catch (emailError: any) {
             console.error(`  ⚠️ Error enviando email a ${email}:`, emailError);
             results.errors.push(`Error enviando email a ${email}: ${emailError.message}`);
           }

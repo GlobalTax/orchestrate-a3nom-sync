@@ -258,92 +258,144 @@ export default function RestaurantImport() {
       errors: [],
     };
 
-    const batchSize = 50;
-    const batches = Math.ceil(csvData.length / batchSize);
-
-    for (let i = 0; i < batches; i++) {
-      const batch = csvData.slice(i * batchSize, (i + 1) * batchSize);
-
-      for (const [index, row] of batch.entries()) {
-        const mappedRow: Record<string, any> = {};
-        
+    try {
+      // PASO 1: Extraer y upsert franquiciados únicos
+      const uniqueFranchiseesMap = new Map();
+      csvData.forEach(row => {
         Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
-          mappedRow[dbCol] = row[csvCol] || null;
-        });
-
-        // Añadir código si no existe
-        if (!mappedRow.codigo) {
-          mappedRow.codigo = mappedRow.site_number || "";
-        }
-
-        // Asegurar que nombre existe
-        if (!mappedRow.nombre) {
-          mappedRow.nombre = mappedRow.nombre || `Restaurante ${mappedRow.site_number || ""}`;
-        }
-
-        // Default país
-        if (!mappedRow.pais) {
-          mappedRow.pais = "España";
-        }
-
-        try {
-          if (importStrategy === "insert") {
-            const { error } = await supabase.from("centres").insert([mappedRow as any]);
-            if (error) throw error;
-            result.inserted++;
-          } else if (importStrategy === "upsert") {
-            // Verificar si existe
-            const { data: existing } = await supabase
-              .from("centres")
-              .select("id")
-              .eq("site_number", mappedRow.site_number)
-              .maybeSingle();
-
-            if (existing) {
-              const { error } = await supabase
-                .from("centres")
-                .update(mappedRow as any)
-                .eq("id", existing.id);
-              if (error) throw error;
-              result.updated++;
-            } else {
-              const { error } = await supabase.from("centres").insert([mappedRow as any]);
-              if (error) throw error;
-              result.inserted++;
-            }
-          } else {
-            // skip - verificar si existe
-            const { data: existing } = await supabase
-              .from("centres")
-              .select("id")
-              .eq("site_number", mappedRow.site_number)
-              .maybeSingle();
-
-            if (existing) {
-              result.skipped++;
-            } else {
-              const { error } = await supabase.from("centres").insert([mappedRow as any]);
-              if (error) throw error;
-              result.inserted++;
+          if (dbCol === 'franchisee_email' && row[csvCol]) {
+            const email = String(row[csvCol]).trim().toLowerCase();
+            const nameCol = Object.keys(columnMapping).find(k => columnMapping[k] === 'franchisee_name');
+            const taxIdCol = Object.keys(columnMapping).find(k => columnMapping[k] === 'company_tax_id');
+            
+            if (!uniqueFranchiseesMap.has(email)) {
+              uniqueFranchiseesMap.set(email, {
+                email,
+                name: nameCol && row[nameCol] ? String(row[nameCol]).trim() : email.split('@')[0],
+                company_tax_id: taxIdCol && row[taxIdCol] ? String(row[taxIdCol]).trim() : null
+              });
             }
           }
-        } catch (error: any) {
-          result.errors.push({
-            row: i * batchSize + index + 1,
-            field: "general",
-            message: error.message,
-          });
+        });
+      });
+
+      const uniqueFranchisees = Array.from(uniqueFranchiseesMap.values());
+      const franchiseeIdMap = new Map<string, string>();
+
+      if (uniqueFranchisees.length > 0) {
+        console.log('🔄 Upserting franquiciados:', uniqueFranchisees.length);
+        
+        const { data: franchisees, error: franchiseeError } = await supabase
+          .from('franchisees')
+          .upsert(uniqueFranchisees, { onConflict: 'email' })
+          .select('id, email');
+
+        if (franchiseeError) {
+          console.error('Error upserting franchisees:', franchiseeError);
+          throw franchiseeError;
         }
+
+        franchisees?.forEach(f => {
+          franchiseeIdMap.set(f.email, f.id);
+        });
+        
+        console.log('✅ Franquiciados procesados:', franchisees?.length);
       }
 
-      setImportProgress(((i + 1) / batches) * 100);
-    }
+      // PASO 2: Procesar restaurantes con franchisee_id
+      const batchSize = 50;
+      const batches = Math.ceil(csvData.length / batchSize);
 
-    setImportResult(result);
-    setImporting(false);
-    setStep(4);
-    
-    toast.success(`Importación completada: ${result.inserted} insertados, ${result.updated} actualizados`);
+      for (let i = 0; i < batches; i++) {
+        const batch = csvData.slice(i * batchSize, (i + 1) * batchSize);
+
+        for (const [index, row] of batch.entries()) {
+          const mappedRow: Record<string, any> = {};
+          
+          Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
+            mappedRow[dbCol] = row[csvCol] || null;
+          });
+
+          // Preparar datos para Restaurants table
+          const restaurantData: any = {
+            name: mappedRow.nombre,
+            site_number: mappedRow.site_number,
+            address: mappedRow.direccion,
+            city: mappedRow.ciudad,
+            state: mappedRow.state,
+            country: mappedRow.pais || "España",
+            postal_code: mappedRow.postal_code,
+            seating_capacity: mappedRow.seating_capacity,
+            square_meters: mappedRow.square_meters,
+            opening_date: mappedRow.opening_date,
+            franchisee_id: mappedRow.franchisee_email 
+              ? franchiseeIdMap.get(String(mappedRow.franchisee_email).trim().toLowerCase()) 
+              : null
+          };
+
+          try {
+            if (importStrategy === "insert") {
+              const { error } = await supabase.from("Restaurants").insert([restaurantData]);
+              if (error) throw error;
+              result.inserted++;
+            } else if (importStrategy === "upsert") {
+              // Verificar si existe
+              const { data: existing } = await supabase
+                .from("Restaurants")
+                .select("id")
+                .eq("site_number", restaurantData.site_number)
+                .maybeSingle();
+
+              if (existing) {
+                const { error } = await supabase
+                  .from("Restaurants")
+                  .update(restaurantData)
+                  .eq("id", existing.id);
+                if (error) throw error;
+                result.updated++;
+              } else {
+                const { error } = await supabase.from("Restaurants").insert([restaurantData]);
+                if (error) throw error;
+                result.inserted++;
+              }
+            } else {
+              // skip - verificar si existe
+              const { data: existing } = await supabase
+                .from("Restaurants")
+                .select("id")
+                .eq("site_number", restaurantData.site_number)
+                .maybeSingle();
+
+              if (existing) {
+                result.skipped++;
+              } else {
+                const { error } = await supabase.from("Restaurants").insert([restaurantData]);
+                if (error) throw error;
+                result.inserted++;
+              }
+            }
+          } catch (error: any) {
+            result.errors.push({
+              row: i * batchSize + index + 1,
+              field: "general",
+              message: error.message,
+            });
+          }
+        }
+
+        setImportProgress(((i + 1) / batches) * 100);
+      }
+
+      setImportResult(result);
+      setImporting(false);
+      setStep(4);
+      
+      toast.success(`Importación completada: ${result.inserted} insertados, ${result.updated} actualizados`);
+    } catch (error: any) {
+      console.error('Error en importación:', error);
+      toast.error(`Error: ${error.message}`);
+      setImporting(false);
+    }
   };
 
   if (roleLoading) {
