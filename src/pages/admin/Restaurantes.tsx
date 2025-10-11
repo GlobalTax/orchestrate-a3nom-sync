@@ -18,7 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { 
   Building2, Plus, Pencil, Power, PowerOff, Loader2, RefreshCw, Wifi, Info, 
-  Server, DollarSign, Edit, X, ArrowRight, Users, UserPlus, Trash2
+  Server, DollarSign, Edit, X, ArrowRight, Users, UserPlus, Trash2, Upload
 } from "lucide-react";
 
 interface Centre {
@@ -78,7 +78,17 @@ const Restaurantes = () => {
     direccion: "",
     ciudad: "",
     pais: "España",
+    postal_code: "",
+    state: "",
+    site_number: "",
+    franchisee_name: "",
+    franchisee_email: "",
+    company_tax_id: "",
+    seating_capacity: null as number | null,
+    square_meters: null as number | null,
+    opening_date: null as string | null,
     orquest_business_id: "",
+    orquest_service_id: "",
   });
 
   const [serviceFormData, setServiceFormData] = useState({
@@ -397,7 +407,17 @@ const Restaurantes = () => {
       direccion: "",
       ciudad: "",
       pais: "España",
+      postal_code: "",
+      state: "",
+      site_number: "",
+      franchisee_name: "",
+      franchisee_email: "",
+      company_tax_id: "",
+      seating_capacity: null,
+      square_meters: null,
+      opening_date: null,
       orquest_business_id: "",
+      orquest_service_id: "",
     });
     setEditingCentre(null);
     setDialogOpen(false);
@@ -431,7 +451,17 @@ const Restaurantes = () => {
       direccion: centre.direccion || "",
       ciudad: centre.ciudad || "",
       pais: centre.pais,
+      postal_code: (centre as any).postal_code || "",
+      state: (centre as any).state || "",
+      site_number: (centre as any).site_number || "",
+      franchisee_name: (centre as any).franchisee_name || "",
+      franchisee_email: (centre as any).franchisee_email || "",
+      company_tax_id: (centre as any).company_tax_id || "",
+      seating_capacity: (centre as any).seating_capacity || null,
+      square_meters: (centre as any).square_meters || null,
+      opening_date: (centre as any).opening_date || null,
       orquest_business_id: centre.orquest_business_id || "",
+      orquest_service_id: centre.orquest_service_id || "",
     });
     setDialogOpen(true);
   };
@@ -671,8 +701,8 @@ const Restaurantes = () => {
 
           {/* TAB: Franquiciados/Gestores */}
           <TabsContent value="franchisees" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <Alert className="flex-1 mr-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+              <Alert className="flex-1">
                 <Info className="h-4 w-4" />
                 <AlertTitle>Gestión de Franquiciados</AlertTitle>
                 <AlertDescription>
@@ -680,6 +710,31 @@ const Restaurantes = () => {
                   Desde aquí puedes asignar gestores a cada restaurante.
                 </AlertDescription>
               </Alert>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => window.location.href = '/admin/import-restaurants'}
+                  variant="outline"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Importar CSV
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      toast.info("Iniciando asignación automática...");
+                      const { data, error } = await supabase.functions.invoke("assign_franchisees");
+                      if (error) throw error;
+                      toast.success(`✅ ${data.created_users} usuarios creados, ${data.roles_assigned} roles asignados`);
+                      queryClient.invalidateQueries({ queryKey: ["users_with_roles"] });
+                    } catch (error: any) {
+                      toast.error("Error: " + error.message);
+                    }
+                  }}
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Auto-asignar
+                </Button>
+              </div>
             </div>
 
             {loadingUsers || loadingCentres ? (
@@ -1002,19 +1057,31 @@ const Restaurantes = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="nombre">
-                    Nombre <span className="text-red-500">*</span>
-                  </Label>
+                  <Label htmlFor="site_number">Site Number</Label>
                   <Input
-                    id="nombre"
-                    value={centreFormData.nombre}
+                    id="site_number"
+                    value={centreFormData.site_number}
                     onChange={(e) =>
-                      setCentreFormData({ ...centreFormData, nombre: e.target.value })
+                      setCentreFormData({ ...centreFormData, site_number: e.target.value })
                     }
-                    placeholder="Ej: Restaurant Madrid Centro"
-                    required
+                    placeholder="Ej: 12345"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nombre">
+                  Nombre <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="nombre"
+                  value={centreFormData.nombre}
+                  onChange={(e) =>
+                    setCentreFormData({ ...centreFormData, nombre: e.target.value })
+                  }
+                  placeholder="Ej: McDonald's Madrid Centro"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
@@ -1029,7 +1096,7 @@ const Restaurantes = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ciudad">Ciudad</Label>
                   <Input
@@ -1042,32 +1109,167 @@ const Restaurantes = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="pais">País</Label>
+                  <Label htmlFor="state">Provincia</Label>
                   <Input
-                    id="pais"
-                    value={centreFormData.pais}
+                    id="state"
+                    value={centreFormData.state}
                     onChange={(e) =>
-                      setCentreFormData({ ...centreFormData, pais: e.target.value })
+                      setCentreFormData({ ...centreFormData, state: e.target.value })
                     }
+                    placeholder="Madrid"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postal_code">Código Postal</Label>
+                  <Input
+                    id="postal_code"
+                    value={centreFormData.postal_code}
+                    onChange={(e) =>
+                      setCentreFormData({ ...centreFormData, postal_code: e.target.value })
+                    }
+                    placeholder="28001"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="orquest_business_id">Business ID (Orquest)</Label>
+                <Label htmlFor="pais">País</Label>
                 <Input
-                  id="orquest_business_id"
-                  value={centreFormData.orquest_business_id}
+                  id="pais"
+                  value={centreFormData.pais}
                   onChange={(e) =>
-                    setCentreFormData({
-                      ...centreFormData,
-                      orquest_business_id: e.target.value,
-                    })
+                    setCentreFormData({ ...centreFormData, pais: e.target.value })
                   }
-                  placeholder="Ej: B001"
+                  placeholder="España"
                 />
+              </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <h3 className="font-semibold text-sm">Información del Franquiciado</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="franchisee_name">Nombre Franquiciado</Label>
+                    <Input
+                      id="franchisee_name"
+                      value={centreFormData.franchisee_name}
+                      onChange={(e) =>
+                        setCentreFormData({ ...centreFormData, franchisee_name: e.target.value })
+                      }
+                      placeholder="Nombre completo"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="franchisee_email">Email Franquiciado</Label>
+                    <Input
+                      id="franchisee_email"
+                      type="email"
+                      value={centreFormData.franchisee_email}
+                      onChange={(e) =>
+                        setCentreFormData({ ...centreFormData, franchisee_email: e.target.value })
+                      }
+                      placeholder="email@example.com"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <h3 className="font-semibold text-sm">Detalles del Local</h3>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="company_tax_id">NIF/CIF</Label>
+                    <Input
+                      id="company_tax_id"
+                      value={centreFormData.company_tax_id}
+                      onChange={(e) =>
+                        setCentreFormData({ ...centreFormData, company_tax_id: e.target.value })
+                      }
+                      placeholder="A12345678"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="seating_capacity">Capacidad</Label>
+                    <Input
+                      id="seating_capacity"
+                      type="number"
+                      value={centreFormData.seating_capacity || ""}
+                      onChange={(e) =>
+                        setCentreFormData({ 
+                          ...centreFormData, 
+                          seating_capacity: e.target.value ? parseInt(e.target.value) : null 
+                        })
+                      }
+                      placeholder="Ej: 50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="square_meters">M² Superficie</Label>
+                    <Input
+                      id="square_meters"
+                      type="number"
+                      step="0.01"
+                      value={centreFormData.square_meters || ""}
+                      onChange={(e) =>
+                        setCentreFormData({ 
+                          ...centreFormData, 
+                          square_meters: e.target.value ? parseFloat(e.target.value) : null 
+                        })
+                      }
+                      placeholder="Ej: 150.5"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="opening_date">Fecha Apertura</Label>
+                  <Input
+                    id="opening_date"
+                    type="date"
+                    value={centreFormData.opening_date || ""}
+                    onChange={(e) =>
+                      setCentreFormData({ ...centreFormData, opening_date: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <h3 className="font-semibold text-sm">Configuración Orquest</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="orquest_business_id">Business ID</Label>
+                    <Input
+                      id="orquest_business_id"
+                      value={centreFormData.orquest_business_id}
+                      onChange={(e) =>
+                        setCentreFormData({
+                          ...centreFormData,
+                          orquest_business_id: e.target.value,
+                        })
+                      }
+                      placeholder="Ej: B001"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="orquest_service_id">Service ID</Label>
+                    <Input
+                      id="orquest_service_id"
+                      value={centreFormData.orquest_service_id}
+                      onChange={(e) =>
+                        setCentreFormData({
+                          ...centreFormData,
+                          orquest_service_id: e.target.value,
+                        })
+                      }
+                      placeholder="Ej: S001"
+                    />
+                  </div>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Los services se configuran en la pestaña "Services Orquest"
+                  Los services también se pueden configurar en la pestaña "Services Orquest"
                 </p>
               </div>
 

@@ -15,6 +15,7 @@ import Costs from "./pages/Costs";
 import Users from "./pages/admin/Users";
 import EmployeeMapping from "./pages/admin/EmployeeMapping";
 import PayrollImport from "./pages/admin/PayrollImport";
+import RestaurantImport from "./pages/admin/RestaurantImport";
 import Audit from "./pages/admin/Audit";
 import Alerts from "./pages/admin/Alerts";
 import Centres from "./pages/admin/Centres";
@@ -56,6 +57,7 @@ const App = () => {
             <Route path="/admin/importar-nominas" element={<PayrollImport />} />
             <Route path="/admin/auditoria" element={<Audit />} />
             <Route path="/admin/alertas" element={<Alerts />} />
+            <Route path="/admin/import-restaurants" element={<RestaurantImport />} />
             
             {/* Nueva página unificada de restaurantes */}
             <Route path="/admin/restaurantes" element={<Restaurantes />} />

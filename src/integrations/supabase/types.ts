@@ -218,39 +218,66 @@ export type Database = {
           activo: boolean
           ciudad: string | null
           codigo: string
+          company_tax_id: string | null
           created_at: string
           direccion: string | null
+          franchisee_email: string | null
+          franchisee_name: string | null
           id: string
           nombre: string
+          opening_date: string | null
           orquest_business_id: string | null
           orquest_service_id: string | null
           pais: string | null
+          postal_code: string | null
+          seating_capacity: number | null
+          site_number: string | null
+          square_meters: number | null
+          state: string | null
           updated_at: string
         }
         Insert: {
           activo?: boolean
           ciudad?: string | null
           codigo: string
+          company_tax_id?: string | null
           created_at?: string
           direccion?: string | null
+          franchisee_email?: string | null
+          franchisee_name?: string | null
           id?: string
           nombre: string
+          opening_date?: string | null
           orquest_business_id?: string | null
           orquest_service_id?: string | null
           pais?: string | null
+          postal_code?: string | null
+          seating_capacity?: number | null
+          site_number?: string | null
+          square_meters?: number | null
+          state?: string | null
           updated_at?: string
         }
         Update: {
           activo?: boolean
           ciudad?: string | null
           codigo?: string
+          company_tax_id?: string | null
           created_at?: string
           direccion?: string | null
+          franchisee_email?: string | null
+          franchisee_name?: string | null
           id?: string
           nombre?: string
+          opening_date?: string | null
           orquest_business_id?: string | null
           orquest_service_id?: string | null
           pais?: string | null
+          postal_code?: string | null
+          seating_capacity?: number | null
+          site_number?: string | null
+          square_meters?: number | null
+          state?: string | null
           updated_at?: string
         }
         Relationships: []
