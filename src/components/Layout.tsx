@@ -98,15 +98,9 @@ const Layout = ({ children }: LayoutProps) => {
   if (!session) return null;
 
   return (
-    <SidebarProvider 
-      open={!isMobile}
-      onOpenChange={(open) => {
-        // En desktop, siempre mantenerlo abierto
-        if (!isMobile) return;
-      }}
-    >
+    <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full">
-        <Sidebar collapsible={isMobile ? "offcanvas" : "none"} className="border-r border-sidebar-border">
+        <Sidebar collapsible={isMobile ? "offcanvas" : "icon"} className="border-r border-sidebar-border">
           <div className="p-6 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-sidebar-primary rounded-lg">
@@ -124,11 +118,12 @@ const Layout = ({ children }: LayoutProps) => {
               <SidebarGroupLabel>Menú Principal</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {menuItems.map((item) => (
+                   {menuItems.map((item) => (
                     <SidebarMenuItem key={item.path}>
                       <SidebarMenuButton
                         onClick={() => navigate(item.path)}
                         isActive={isActive(item.path)}
+                        tooltip={item.label}
                         className="w-full"
                       >
                         <item.icon className="h-4 w-4" />
@@ -149,6 +144,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/users")}
                         isActive={isActive("/admin/users")}
+                        tooltip="Administrar Usuarios"
                         className="w-full"
                       >
                         <Shield className="h-4 w-4" />
@@ -159,6 +155,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/mapeo-empleados")}
                         isActive={isActive("/admin/mapeo-empleados")}
+                        tooltip="Mapeo de IDs"
                         className="w-full"
                       >
                         <Users className="h-4 w-4" />
@@ -169,6 +166,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/importar-nominas")}
                         isActive={isActive("/admin/importar-nominas")}
+                        tooltip="Importar Nóminas"
                         className="w-full"
                       >
                         <FileSpreadsheet className="h-4 w-4" />
@@ -179,6 +177,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/auditoria")}
                         isActive={isActive("/admin/auditoria")}
+                        tooltip="Auditoría"
                         className="w-full"
                       >
                         <History className="h-4 w-4" />
@@ -189,6 +188,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/alertas")}
                         isActive={isActive("/admin/alertas")}
+                        tooltip="Alertas"
                         className="w-full"
                       >
                         <Bell className="h-4 w-4" />
@@ -199,6 +199,7 @@ const Layout = ({ children }: LayoutProps) => {
                 <SidebarMenuButton
                   onClick={() => navigate("/admin/restaurantes")}
                   isActive={isActive("/admin/restaurantes")}
+                  tooltip="Restaurantes"
                   className="w-full"
                 >
                   <Building2 className="h-4 w-4" />
@@ -209,6 +210,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/sincronizar")}
                         isActive={isActive("/admin/sincronizar")}
+                        tooltip="Sincronización"
                         className="w-full"
                       >
                         <RefreshCw className="h-4 w-4" />
@@ -219,6 +221,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/health")}
                         isActive={isActive("/admin/health")}
+                        tooltip="Estado del Sistema"
                         className="w-full"
                       >
                         <Activity className="h-4 w-4" />
@@ -229,6 +232,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <SidebarMenuButton
                         onClick={() => navigate("/admin/ajustes")}
                         isActive={isActive("/admin/ajustes")}
+                        tooltip="Ajustes"
                         className="w-full"
                       >
                         <Settings2 className="h-4 w-4" />
@@ -255,7 +259,10 @@ const Layout = ({ children }: LayoutProps) => {
 
         <div className="flex-1 flex flex-col">
           <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
-            <SidebarTrigger className="md:hidden" />
+            <div className="flex items-center gap-4">
+              <SidebarTrigger />
+              <h2 className="font-semibold text-foreground">Orquest + A3Nom</h2>
+            </div>
             
             <div className="flex items-center gap-4">
               {/* Selector de restaurante mejorado - muestra [codigo] nombre */}
@@ -319,7 +326,7 @@ const RestaurantSelector = ({ selectedCentro, setSelectedCentro, availableCentro
           <Building2 className="mr-2 h-4 w-4" />
           <SelectValue placeholder="Seleccionar restaurante" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="z-50">
           {isAdmin && (
             <>
               <SelectItem value="all">
