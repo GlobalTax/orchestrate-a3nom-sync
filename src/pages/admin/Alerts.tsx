@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Plus, Play, Pencil, Trash2, BarChart3 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const ALERT_TYPES = [
   { value: 'ABSENTISMO_ALTO', label: 'Absentismo Alto' },
@@ -302,21 +303,22 @@ export default function Alerts() {
             {executing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
             Ejecutar Ahora
           </Button>
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }} modal={true}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Nueva Alerta
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{editingAlert ? 'Editar Alerta' : 'Nueva Alerta'}</DialogTitle>
                 <DialogDescription>
                   Configure los parámetros de la alerta
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
+              <ScrollArea className="max-h-[70vh] pr-4">
+                <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="nombre">Nombre</Label>
                   <Input
@@ -342,7 +344,7 @@ export default function Alerts() {
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[100]">
                         {ALERT_TYPES.map(type => (
                           <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                         ))}
@@ -355,7 +357,7 @@ export default function Alerts() {
                       <SelectTrigger>
                         <SelectValue placeholder="Todos los centros" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[100]">
                         <SelectItem value="">Todos los centros</SelectItem>
                         {centros.map(centro => (
                           <SelectItem key={centro} value={centro}>{centro}</SelectItem>
@@ -380,7 +382,7 @@ export default function Alerts() {
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[100]">
                         {OPERATORS.map(op => (
                           <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
                         ))}
@@ -393,7 +395,7 @@ export default function Alerts() {
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[100]">
                         {PERIODS.map(period => (
                           <SelectItem key={period.value} value={period.value}>{period.label}</SelectItem>
                         ))}
@@ -437,6 +439,7 @@ export default function Alerts() {
                   <Label>Alerta Activa</Label>
                 </div>
               </div>
+              </ScrollArea>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
                   Cancelar
