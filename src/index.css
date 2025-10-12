@@ -51,14 +51,14 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
-    /* Sidebar - Dark gray characteristic of Linear */
-    --sidebar-background: 240 10% 4%;
-    --sidebar-foreground: 240 5% 96%;
+    /* Sidebar - Light gray/white characteristic of Linear */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 10% 10%;
     --sidebar-primary: 224 76% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 8% 12%;
-    --sidebar-accent-foreground: 240 5% 96%;
-    --sidebar-border: 240 8% 12%;
+    --sidebar-accent: 240 6% 94%;
+    --sidebar-accent-foreground: 240 10% 10%;
+    --sidebar-border: 240 6% 90%;
     --sidebar-ring: 224 76% 58%;
 
     /* Softer shadows */

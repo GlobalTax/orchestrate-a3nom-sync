@@ -107,15 +107,15 @@ const Layout = ({ children }: LayoutProps) => {
                 <Building2 className="h-4 w-4 text-sidebar-primary" />
               </div>
               <div>
-                <h2 className="text-sm font-medium text-sidebar-foreground">Orquest</h2>
-                <p className="text-[10px] text-sidebar-foreground/50">Gestión Integrada</p>
+                <h2 className="text-sm font-semibold text-sidebar-foreground">Orquest</h2>
+                <p className="text-[10px] text-sidebar-foreground/60">Gestión Integrada</p>
               </div>
             </div>
           </div>
 
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel className="text-[11px] uppercase tracking-wider font-medium">Menú Principal</SidebarGroupLabel>
+              <SidebarGroupLabel className="text-[11px] uppercase tracking-wider font-medium text-sidebar-foreground/50">Menú Principal</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                    {menuItems.map((item) => (
@@ -124,7 +124,11 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate(item.path)}
                         isActive={isActive(item.path)}
                         tooltip={item.label}
-                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive(item.path) 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
                       >
                         <item.icon className="h-4 w-4 mr-2" />
                         <span>{item.label}</span>
@@ -137,7 +141,7 @@ const Layout = ({ children }: LayoutProps) => {
 
             {(isAdmin || everAdmin) && (
               <SidebarGroup>
-                <SidebarGroupLabel className="text-[11px] uppercase tracking-wider font-medium">Administración</SidebarGroupLabel>
+                <SidebarGroupLabel className="text-[11px] uppercase tracking-wider font-medium text-sidebar-foreground/50">Administración</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     <SidebarMenuItem>
@@ -145,7 +149,11 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/users")}
                         isActive={isActive("/admin/users")}
                         tooltip="Administrar Usuarios"
-                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive("/admin/users") 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
                       >
                         <Shield className="h-4 w-4 mr-2" />
                         <span>Administrar Usuarios</span>
@@ -156,7 +164,11 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/mapeo-empleados")}
                         isActive={isActive("/admin/mapeo-empleados")}
                         tooltip="Mapeo de IDs"
-                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive("/admin/mapeo-empleados") 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
                       >
                         <Users className="h-4 w-4 mr-2" />
                         <span>Mapeo de IDs</span>
@@ -167,7 +179,11 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/importar-nominas")}
                         isActive={isActive("/admin/importar-nominas")}
                         tooltip="Importar Nóminas"
-                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive("/admin/importar-nominas") 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
                       >
                         <FileSpreadsheet className="h-4 w-4 mr-2" />
                         <span>Importar Nóminas</span>
@@ -178,7 +194,11 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/auditoria")}
                         isActive={isActive("/admin/auditoria")}
                         tooltip="Auditoría"
-                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive("/admin/auditoria") 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
                       >
                         <History className="h-4 w-4 mr-2" />
                         <span>Auditoría</span>
@@ -189,7 +209,11 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/alertas")}
                         isActive={isActive("/admin/alertas")}
                         tooltip="Alertas"
-                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive("/admin/alertas") 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
                       >
                         <Bell className="h-4 w-4 mr-2" />
                         <span>Alertas</span>
@@ -200,7 +224,11 @@ const Layout = ({ children }: LayoutProps) => {
                   onClick={() => navigate("/admin/restaurantes")}
                   isActive={isActive("/admin/restaurantes")}
                   tooltip="Restaurantes"
-                  className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                  className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                    isActive("/admin/restaurantes") 
+                      ? "bg-primary/8 text-primary font-medium" 
+                      : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  }`}
                 >
                   <Building2 className="h-4 w-4 mr-2" />
                   <span>Restaurantes</span>
@@ -211,7 +239,11 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/sincronizar")}
                         isActive={isActive("/admin/sincronizar")}
                         tooltip="Sincronización"
-                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive("/admin/sincronizar") 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
                       >
                         <RefreshCw className="h-4 w-4 mr-2" />
                         <span>Sincronización</span>
@@ -222,7 +254,11 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/health")}
                         isActive={isActive("/admin/health")}
                         tooltip="Estado del Sistema"
-                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive("/admin/health") 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
                       >
                         <Activity className="h-4 w-4 mr-2" />
                         <span>Estado del Sistema</span>
@@ -233,7 +269,11 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/ajustes")}
                         isActive={isActive("/admin/ajustes")}
                         tooltip="Ajustes"
-                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive("/admin/ajustes") 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
                       >
                         <Settings2 className="h-4 w-4 mr-2" />
                         <span>Ajustes</span>
@@ -248,7 +288,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="p-3 border-t border-sidebar-border/50 mt-auto">
             <Button
               variant="ghost"
-              className="w-full h-8 justify-start text-[13px] font-normal text-sidebar-foreground hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
+              className="w-full h-8 justify-start text-[13px] font-normal text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-150 ease-linear-ease"
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-4 w-4" />
