@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
+import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +38,8 @@ const PERIODS = [
 
 export default function Alerts() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const [alerts, setAlerts] = useState<any[]>([]);
   const [centros, setCentros] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,10 +63,16 @@ export default function Alerts() {
   });
 
   useEffect(() => {
-    fetchAlerts();
-    fetchCentros();
-    fetchStats();
-  }, []);
+    if (!roleLoading && !isAdmin) {
+      navigate("/dashboard");
+      return;
+    }
+    if (!roleLoading) {
+      fetchAlerts();
+      fetchCentros();
+      fetchStats();
+    }
+  }, [roleLoading, isAdmin, navigate]);
 
   const fetchAlerts = async () => {
     try {
@@ -283,16 +294,19 @@ export default function Alerts() {
     });
   };
 
-  if (loading) {
+  if (loading || roleLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <Layout>
+      <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Gestión de Alertas</h1>
@@ -543,5 +557,6 @@ export default function Alerts() {
         </CardContent>
       </Card>
     </div>
+    </Layout>
   );
 }
