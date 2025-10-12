@@ -18,6 +18,13 @@ export const RestaurantSelector = () => {
   const { selectedRestaurant, setSelectedRestaurant, restaurants, isLoading: contextLoading } = useRestaurant();
   const { isAdmin } = useUserRole();
 
+  console.log('[RestaurantSelector] Rendering with:', {
+    restaurantsCount: restaurants.length,
+    selectedRestaurant: selectedRestaurant?.nombre,
+    isLoading: contextLoading,
+    isAdmin
+  });
+
   // Get employee count for selected restaurant
   const { data: employeeCount } = useQuery({
     queryKey: ['employee_count', selectedRestaurant?.codigo],

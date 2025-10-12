@@ -50,25 +50,51 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
     queryFn: async () => {
       if (!isAdmin && centros.length === 0) return [];
       
-      let query = supabase
-        .from("centres")
-        .select("*")
-        .eq("activo", true);
+      console.log('[RestaurantContext] Fetching restaurants. isAdmin:', isAdmin, 'centros:', centros);
       
-      // Filter by accessible centres for non-admins
-      if (!isAdmin && centros.length > 0) {
-        query = query.in("codigo", centros);
+      // Use RPC that joins centres with franchisees
+      const { data, error } = await supabase.rpc("get_restaurants_with_franchisees");
+      
+      if (error) {
+        console.error('[RestaurantContext] Error fetching restaurants:', error);
+        throw error;
       }
+
+      console.log('[RestaurantContext] Raw data from RPC:', data?.length || 0, 'restaurants');
       
-      const { data, error } = await query.order("nombre");
-      
-      if (error) throw error;
-      
-      return (data || []).map(c => ({
-        ...c,
-        created_at: c.created_at || new Date().toISOString(),
-        updated_at: c.updated_at || new Date().toISOString(),
+      // Map to Restaurant type
+      let allRestaurants = (data || []).map(r => ({
+        id: r.id,
+        codigo: r.site_number || r.id,
+        nombre: r.name || "",
+        direccion: r.address,
+        ciudad: r.city,
+        state: r.state,
+        pais: r.country || "España",
+        postal_code: r.postal_code,
+        site_number: r.site_number,
+        orquest_service_id: null,
+        orquest_business_id: null,
+        activo: true,
+        franchisee_id: r.franchisee_id,
+        franchisee_name: r.franchisee_name,
+        franchisee_email: r.franchisee_email,
+        company_tax_id: r.company_tax_id,
+        seating_capacity: r.seating_capacity ? parseInt(r.seating_capacity) : null,
+        square_meters: r.square_meters ? parseFloat(r.square_meters) : null,
+        opening_date: r.opening_date,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })) as Restaurant[];
+
+      // Filter by accessible centres if not admin
+      if (!isAdmin && centros.length > 0) {
+        allRestaurants = allRestaurants.filter(r => centros.includes(r.codigo));
+        console.log('[RestaurantContext] Filtered to accessible centres:', allRestaurants.length);
+      }
+
+      console.log('[RestaurantContext] Returning', allRestaurants.length, 'restaurants');
+      return allRestaurants;
     },
     enabled: !roleLoading,
     retry: 2,
