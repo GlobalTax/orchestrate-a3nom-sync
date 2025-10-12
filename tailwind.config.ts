@@ -67,7 +67,20 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      fontWeight: {
+        light: '300',
+        normal: '450',
+        medium: '500',
+        semibold: '600',
+        bold: '700',
+      },
+      transitionDuration: {
+        '150': '150ms',
+      },
+      transitionTimingFunction: {
+        'linear-ease': 'cubic-bezier(0.16, 1, 0.3, 1)',
       },
       boxShadow: {
         'sm': 'var(--shadow-sm)',

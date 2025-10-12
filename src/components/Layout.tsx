@@ -100,22 +100,22 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full">
-        <Sidebar collapsible={isMobile ? "offcanvas" : "icon"} className="border-r border-sidebar-border">
-          <div className="p-6 border-b border-sidebar-border">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-sidebar-primary rounded-lg">
-                <Building2 className="h-6 w-6 text-sidebar-primary-foreground" />
+        <Sidebar collapsible={isMobile ? "offcanvas" : "icon"} className="w-60 border-r border-sidebar-border/50">
+          <div className="p-4 border-b border-sidebar-border/50">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-sidebar-primary/10 rounded-md">
+                <Building2 className="h-4 w-4 text-sidebar-primary" />
               </div>
               <div>
-                <h2 className="font-semibold text-sidebar-foreground">Orquest + A3Nom</h2>
-                <p className="text-xs text-sidebar-foreground/60">Gestión Integrada</p>
+                <h2 className="text-sm font-medium text-sidebar-foreground">Orquest</h2>
+                <p className="text-[10px] text-sidebar-foreground/50">Gestión Integrada</p>
               </div>
             </div>
           </div>
 
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Menú Principal</SidebarGroupLabel>
+              <SidebarGroupLabel className="text-[11px] uppercase tracking-wider font-medium">Menú Principal</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                    {menuItems.map((item) => (
@@ -124,9 +124,9 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate(item.path)}
                         isActive={isActive(item.path)}
                         tooltip={item.label}
-                        className="w-full"
+                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                       >
-                        <item.icon className="h-4 w-4" />
+                        <item.icon className="h-4 w-4 mr-2" />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -137,7 +137,7 @@ const Layout = ({ children }: LayoutProps) => {
 
             {(isAdmin || everAdmin) && (
               <SidebarGroup>
-                <SidebarGroupLabel>Administración</SidebarGroupLabel>
+                <SidebarGroupLabel className="text-[11px] uppercase tracking-wider font-medium">Administración</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     <SidebarMenuItem>
@@ -145,9 +145,9 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/users")}
                         isActive={isActive("/admin/users")}
                         tooltip="Administrar Usuarios"
-                        className="w-full"
+                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                       >
-                        <Shield className="h-4 w-4" />
+                        <Shield className="h-4 w-4 mr-2" />
                         <span>Administrar Usuarios</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -156,9 +156,9 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/mapeo-empleados")}
                         isActive={isActive("/admin/mapeo-empleados")}
                         tooltip="Mapeo de IDs"
-                        className="w-full"
+                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                       >
-                        <Users className="h-4 w-4" />
+                        <Users className="h-4 w-4 mr-2" />
                         <span>Mapeo de IDs</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -167,9 +167,9 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/importar-nominas")}
                         isActive={isActive("/admin/importar-nominas")}
                         tooltip="Importar Nóminas"
-                        className="w-full"
+                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                       >
-                        <FileSpreadsheet className="h-4 w-4" />
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
                         <span>Importar Nóminas</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -178,9 +178,9 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/auditoria")}
                         isActive={isActive("/admin/auditoria")}
                         tooltip="Auditoría"
-                        className="w-full"
+                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                       >
-                        <History className="h-4 w-4" />
+                        <History className="h-4 w-4 mr-2" />
                         <span>Auditoría</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -189,9 +189,9 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/alertas")}
                         isActive={isActive("/admin/alertas")}
                         tooltip="Alertas"
-                        className="w-full"
+                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                       >
-                        <Bell className="h-4 w-4" />
+                        <Bell className="h-4 w-4 mr-2" />
                         <span>Alertas</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -200,9 +200,9 @@ const Layout = ({ children }: LayoutProps) => {
                   onClick={() => navigate("/admin/restaurantes")}
                   isActive={isActive("/admin/restaurantes")}
                   tooltip="Restaurantes"
-                  className="w-full"
+                  className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                 >
-                  <Building2 className="h-4 w-4" />
+                  <Building2 className="h-4 w-4 mr-2" />
                   <span>Restaurantes</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -211,9 +211,9 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/sincronizar")}
                         isActive={isActive("/admin/sincronizar")}
                         tooltip="Sincronización"
-                        className="w-full"
+                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                       >
-                        <RefreshCw className="h-4 w-4" />
+                        <RefreshCw className="h-4 w-4 mr-2" />
                         <span>Sincronización</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -222,9 +222,9 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/health")}
                         isActive={isActive("/admin/health")}
                         tooltip="Estado del Sistema"
-                        className="w-full"
+                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                       >
-                        <Activity className="h-4 w-4" />
+                        <Activity className="h-4 w-4 mr-2" />
                         <span>Estado del Sistema</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -233,9 +233,9 @@ const Layout = ({ children }: LayoutProps) => {
                         onClick={() => navigate("/admin/ajustes")}
                         isActive={isActive("/admin/ajustes")}
                         tooltip="Ajustes"
-                        className="w-full"
+                        className="h-8 px-3 text-[13px] font-normal hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
                       >
-                        <Settings2 className="h-4 w-4" />
+                        <Settings2 className="h-4 w-4 mr-2" />
                         <span>Ajustes</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -245,10 +245,10 @@ const Layout = ({ children }: LayoutProps) => {
             )}
           </SidebarContent>
 
-          <div className="p-4 border-t border-sidebar-border mt-auto">
+          <div className="p-3 border-t border-sidebar-border/50 mt-auto">
             <Button
               variant="ghost"
-              className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+              className="w-full h-8 justify-start text-[13px] font-normal text-sidebar-foreground hover:bg-sidebar-accent/50 transition-all duration-150 ease-linear-ease"
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-4 w-4" />
@@ -258,13 +258,13 @@ const Layout = ({ children }: LayoutProps) => {
         </Sidebar>
 
         <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <h2 className="font-semibold text-foreground">Orquest + A3Nom</h2>
+          <header className="h-12 border-b border-border/50 bg-background px-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="h-6 w-6" />
+              <h2 className="text-sm font-medium text-foreground">Gestión Integrada</h2>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               {/* Selector de restaurante mejorado - muestra [codigo] nombre */}
               {(availableCentros.length > 1 || isAdmin) && (
                 <RestaurantSelector 

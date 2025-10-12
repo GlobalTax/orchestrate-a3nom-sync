@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { EmptyState } from "./EmptyState";
+import { cn } from "@/lib/utils";
 
 export interface Column<T> {
   header: string;
@@ -39,9 +40,9 @@ export function DataTable<T extends { id: string | number }>({
     <div className={className}>
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="border-b border-border/30 hover:bg-transparent">
             {columns.map((col, i) => (
-              <TableHead key={i} className={col.className}>
+              <TableHead key={i} className={cn("h-10 px-6 text-[11px] font-medium uppercase tracking-wider text-muted-foreground", col.className)}>
                 {col.header}
               </TableHead>
             ))}
@@ -52,10 +53,13 @@ export function DataTable<T extends { id: string | number }>({
             <TableRow
               key={row.id}
               onClick={() => onRowClick?.(row)}
-              className={onRowClick ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+              className={cn(
+                "border-b border-border/30 hover:bg-muted/30 transition-all duration-150 ease-linear-ease",
+                onRowClick && "cursor-pointer"
+              )}
             >
               {columns.map((col, i) => (
-                <TableCell key={i} className={col.className}>
+                <TableCell key={i} className={cn("py-4 px-6 text-sm font-normal", col.className)}>
                   {typeof col.accessor === "function"
                     ? col.accessor(row)
                     : String(row[col.accessor])}
