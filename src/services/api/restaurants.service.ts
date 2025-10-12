@@ -35,21 +35,22 @@ export class RestaurantsService {
 
   static async create(data: RestaurantFormData): Promise<void> {
     const restaurantData = {
-      site_number: data.codigo,
-      name: data.nombre,
-      address: data.direccion,
-      city: data.ciudad,
+      codigo: data.codigo,
+      nombre: data.nombre,
+      direccion: data.direccion,
+      ciudad: data.ciudad,
       state: data.state,
-      country: data.pais,
+      pais: data.pais,
       postal_code: data.postal_code,
+      site_number: data.site_number,
       franchisee_id: data.franchisee_id,
-      seating_capacity: data.seating_capacity?.toString() || null,
-      square_meters: data.square_meters?.toString() || null,
+      seating_capacity: data.seating_capacity || null,
+      square_meters: data.square_meters || null,
       opening_date: data.opening_date,
     };
 
     const { error } = await supabase
-      .from("Restaurants")
+      .from("centres")
       .insert([restaurantData]);
     
     if (error) throw error;
@@ -57,21 +58,22 @@ export class RestaurantsService {
 
   static async update(id: string, data: RestaurantFormData): Promise<void> {
     const restaurantData = {
-      site_number: data.codigo,
-      name: data.nombre,
-      address: data.direccion,
-      city: data.ciudad,
+      codigo: data.codigo,
+      nombre: data.nombre,
+      direccion: data.direccion,
+      ciudad: data.ciudad,
       state: data.state,
-      country: data.pais,
+      pais: data.pais,
       postal_code: data.postal_code,
+      site_number: data.site_number,
       franchisee_id: data.franchisee_id,
-      seating_capacity: data.seating_capacity?.toString() || null,
-      square_meters: data.square_meters?.toString() || null,
+      seating_capacity: data.seating_capacity || null,
+      square_meters: data.square_meters || null,
       opening_date: data.opening_date,
     };
 
     const { error } = await supabase
-      .from("Restaurants")
+      .from("centres")
       .update(restaurantData)
       .eq("id", id);
     

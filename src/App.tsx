@@ -29,6 +29,7 @@ import DataQuality from "./pages/DataQuality";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import { useUserTheme } from "./hooks/useUserTheme";
+import { RestaurantProvider } from "./contexts/RestaurantContext";
 
 const queryClient = new QueryClient();
 
@@ -37,11 +38,12 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CentroProvider>
-        <TooltipProvider>
-          <BrowserRouter>
-            <Toaster />
-            <Sonner />
+      <RestaurantProvider>
+        <CentroProvider>
+          <TooltipProvider>
+            <BrowserRouter>
+              <Toaster />
+              <Sonner />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -78,8 +80,9 @@ const App = () => {
           </BrowserRouter>
         </TooltipProvider>
       </CentroProvider>
-    </QueryClientProvider>
-  );
+    </RestaurantProvider>
+  </QueryClientProvider>
+);
 };
 
 export default App;

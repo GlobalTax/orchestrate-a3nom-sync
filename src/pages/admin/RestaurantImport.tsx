@@ -266,31 +266,31 @@ export default function RestaurantImport() {
 
           try {
             if (importStrategy === "insert") {
-              const { error } = await supabase.from("Restaurants").insert([restaurantData]);
+              const { error } = await supabase.from("centres").insert([restaurantData]);
               if (error) throw error;
               result.inserted++;
             } else if (importStrategy === "upsert") {
               const { data: existing } = await supabase
-                .from("Restaurants")
+                .from("centres")
                 .select("id")
                 .eq("site_number", restaurantData.site_number)
                 .maybeSingle();
 
               if (existing) {
                 const { error } = await supabase
-                  .from("Restaurants")
+                  .from("centres")
                   .update(restaurantData)
                   .eq("id", existing.id);
                 if (error) throw error;
                 result.updated++;
               } else {
-                const { error } = await supabase.from("Restaurants").insert([restaurantData]);
+                const { error } = await supabase.from("centres").insert([restaurantData]);
                 if (error) throw error;
                 result.inserted++;
               }
             } else {
               const { data: existing } = await supabase
-                .from("Restaurants")
+                .from("centres")
                 .select("id")
                 .eq("site_number", restaurantData.site_number)
                 .maybeSingle();
@@ -298,7 +298,7 @@ export default function RestaurantImport() {
               if (existing) {
                 result.skipped++;
               } else {
-                const { error } = await supabase.from("Restaurants").insert([restaurantData]);
+                const { error } = await supabase.from("centres").insert([restaurantData]);
                 if (error) throw error;
                 result.inserted++;
               }

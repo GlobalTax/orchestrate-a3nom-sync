@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useQuery } from "@tanstack/react-query";
 import {
   SidebarProvider,
   Sidebar,
@@ -33,14 +32,11 @@ import {
   Server,
   Activity
 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useCentro } from "@/contexts/CentroContext";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import NotificationBell from "@/components/NotificationBell";
+import { RestaurantSelector } from "@/components/RestaurantSelector";
 
 interface LayoutProps {
   children: ReactNode;
@@ -51,7 +47,6 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
   const { isAdmin } = useUserRole();
-  const { selectedCentro, setSelectedCentro, availableCentros } = useCentro();
   const isMobile = useIsMobile();
   const [everAdmin, setEverAdmin] = useState(false);
 
@@ -305,16 +300,7 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
             
             <div className="flex items-center gap-2">
-              {/* Selector de restaurante mejorado - muestra [codigo] nombre */}
-              {(availableCentros.length > 1 || isAdmin) && (
-                <RestaurantSelector 
-                  selectedCentro={selectedCentro}
-                  setSelectedCentro={setSelectedCentro}
-                  availableCentros={availableCentros}
-                  isAdmin={isAdmin}
-                />
-              )}
-              
+              <RestaurantSelector />
               <NotificationBell />
             </div>
           </header>
@@ -324,82 +310,6 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </div>
     </SidebarProvider>
-  );
-};
-
-// Component for enhanced restaurant selector
-const RestaurantSelector = ({ selectedCentro, setSelectedCentro, availableCentros, isAdmin }: any) => {
-  const { data: restaurantData } = useQuery({
-    queryKey: ['restaurants_for_selector', availableCentros],
-    queryFn: async () => {
-      if (availableCentros.length === 0) return {};
-      
-      console.info("[Layout] Fetching restaurants for selector, codes:", availableCentros);
-      const { data, error } = await supabase
-        .from("centres")
-        .select("id, codigo, nombre, orquest_business_id")
-        .eq("activo", true)
-        .in("codigo", availableCentros);
-      
-      if (error) {
-        console.error("[Layout] Error fetching restaurants:", error);
-        throw error;
-      }
-      
-      console.info("[Layout] Fetched restaurants count:", data?.length || 0);
-      return data.reduce((acc, r) => {
-        acc[r.codigo] = r;
-        return acc;
-      }, {} as Record<string, typeof data[0]>);
-    },
-    enabled: availableCentros.length > 0,
-    retry: 2,
-  });
-
-  return (
-    <div className="flex items-center gap-3">
-      <Select
-        value={selectedCentro || "all"}
-        onValueChange={(val) => setSelectedCentro(val === "all" ? null : val)}
-      >
-        <SelectTrigger className="w-[280px]">
-          <Building2 className="mr-2 h-4 w-4" />
-          <SelectValue placeholder="Seleccionar restaurante" />
-        </SelectTrigger>
-        <SelectContent className="z-50">
-          {isAdmin && (
-            <>
-              <SelectItem value="all">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-3 w-3" />
-                  Todos los restaurantes
-                </div>
-              </SelectItem>
-              <Separator className="my-1" />
-            </>
-          )}
-          {availableCentros.map((centro: string) => (
-            <SelectItem key={centro} value={centro}>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs font-mono">
-                  {restaurantData?.[centro]?.codigo || centro}
-                </Badge>
-                <span className="text-sm">
-                  {restaurantData?.[centro]?.nombre || centro}
-                </span>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      
-      {selectedCentro && restaurantData?.[selectedCentro] && (
-        <Badge variant="secondary" className="gap-1">
-          <Building2 className="h-3 w-3" />
-          Filtrando: {restaurantData[selectedCentro]?.nombre}
-        </Badge>
-      )}
-    </div>
   );
 };
 

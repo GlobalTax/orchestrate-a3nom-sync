@@ -222,6 +222,7 @@ export type Database = {
           created_at: string
           direccion: string | null
           franchisee_email: string | null
+          franchisee_id: string | null
           franchisee_name: string | null
           id: string
           nombre: string
@@ -244,6 +245,7 @@ export type Database = {
           created_at?: string
           direccion?: string | null
           franchisee_email?: string | null
+          franchisee_id?: string | null
           franchisee_name?: string | null
           id?: string
           nombre: string
@@ -266,6 +268,7 @@ export type Database = {
           created_at?: string
           direccion?: string | null
           franchisee_email?: string | null
+          franchisee_id?: string | null
           franchisee_name?: string | null
           id?: string
           nombre?: string
@@ -280,7 +283,15 @@ export type Database = {
           state?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "centres_franchisee_id_fkey"
+            columns: ["franchisee_id"]
+            isOneToOne: false
+            referencedRelation: "franchisees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dq_issues: {
         Row: {
@@ -741,74 +752,6 @@ export type Database = {
           },
         ]
       }
-      Restaurants: {
-        Row: {
-          address: string | null
-          city: string | null
-          company_tax_id: string | null
-          country: string | null
-          created_at: string | null
-          franchisee_email: string | null
-          franchisee_id: string | null
-          franchisee_name: string | null
-          id: string | null
-          name: string | null
-          opening_date: string | null
-          postal_code: string | null
-          seating_capacity: string | null
-          site_number: string | null
-          square_meters: string | null
-          state: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          address?: string | null
-          city?: string | null
-          company_tax_id?: string | null
-          country?: string | null
-          created_at?: string | null
-          franchisee_email?: string | null
-          franchisee_id?: string | null
-          franchisee_name?: string | null
-          id?: string | null
-          name?: string | null
-          opening_date?: string | null
-          postal_code?: string | null
-          seating_capacity?: string | null
-          site_number?: string | null
-          square_meters?: string | null
-          state?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          address?: string | null
-          city?: string | null
-          company_tax_id?: string | null
-          country?: string | null
-          created_at?: string | null
-          franchisee_email?: string | null
-          franchisee_id?: string | null
-          franchisee_name?: string | null
-          id?: string | null
-          name?: string | null
-          opening_date?: string | null
-          postal_code?: string | null
-          seating_capacity?: string | null
-          site_number?: string | null
-          square_meters?: string | null
-          state?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "Restaurants_franchisee_id_fkey"
-            columns: ["franchisee_id"]
-            isOneToOne: false
-            referencedRelation: "franchisees"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       schedules: {
         Row: {
           created_at: string | null
@@ -990,36 +933,6 @@ export type Database = {
       }
     }
     Views: {
-      v_restaurants_with_franchisees: {
-        Row: {
-          address: string | null
-          city: string | null
-          company_tax_id: string | null
-          country: string | null
-          created_at: string | null
-          franchisee_email: string | null
-          franchisee_id: string | null
-          franchisee_name: string | null
-          id: string | null
-          name: string | null
-          opening_date: string | null
-          postal_code: string | null
-          seating_capacity: string | null
-          site_number: string | null
-          square_meters: string | null
-          state: string | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "Restaurants_franchisee_id_fkey"
-            columns: ["franchisee_id"]
-            isOneToOne: false
-            referencedRelation: "franchisees"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v_user_centres: {
         Row: {
           centro_code: string | null
