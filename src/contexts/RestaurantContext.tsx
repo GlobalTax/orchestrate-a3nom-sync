@@ -50,46 +50,57 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
     queryFn: async () => {
       if (!isAdmin && centros.length === 0) return [];
       
-      console.log('[RestaurantContext] Fetching restaurants. isAdmin:', isAdmin, 'centros:', centros);
+      console.log('[RestaurantContext] Fetching centres. isAdmin:', isAdmin, 'centros:', centros);
       
-      // Use RPC that joins centres with franchisees
-      const { data, error } = await supabase.rpc("get_restaurants_with_franchisees");
-      
+      const normalizados = centros.map(c => c.trim().toUpperCase());
+      let query = supabase
+        .from('centres')
+        .select(`
+          id, codigo, nombre, direccion, ciudad, state, pais, postal_code,
+          site_number, orquest_service_id, orquest_business_id, activo,
+          franchisee_id, franchisee_name, franchisee_email, company_tax_id,
+          seating_capacity, square_meters, opening_date, created_at, updated_at
+        `)
+        .eq('activo', true);
+
+      if (!isAdmin && normalizados.length > 0) {
+        query = query.in('codigo', normalizados);
+      }
+
+      const { data, error } = await query.order('nombre');
       if (error) {
-        console.error('[RestaurantContext] Error fetching restaurants:', error);
+        console.error('[RestaurantContext] Error fetching centres:', error);
         throw error;
       }
 
-      console.log('[RestaurantContext] Raw data from RPC:', data?.length || 0, 'restaurants');
-      
-      // Map to Restaurant type
-      let allRestaurants = (data || []).map(r => ({
-        id: r.id,
-        codigo: r.site_number || r.id,
-        nombre: r.name || "",
-        direccion: r.address,
-        ciudad: r.city,
-        state: r.state,
-        pais: r.country || "España",
-        postal_code: r.postal_code,
-        site_number: r.site_number,
-        orquest_service_id: null,
-        orquest_business_id: null,
+      console.log('[RestaurantContext] Raw centres:', data?.length || 0);
+
+      let allRestaurants = (data || []).map((c) => ({
+        id: c.id,
+        codigo: c.codigo,
+        nombre: c.nombre || '',
+        direccion: c.direccion,
+        ciudad: c.ciudad,
+        state: c.state,
+        pais: c.pais || 'España',
+        postal_code: c.postal_code,
+        site_number: c.site_number,
+        orquest_service_id: c.orquest_service_id,
+        orquest_business_id: c.orquest_business_id,
         activo: true,
-        franchisee_id: r.franchisee_id,
-        franchisee_name: r.franchisee_name,
-        franchisee_email: r.franchisee_email,
-        company_tax_id: r.company_tax_id,
-        seating_capacity: r.seating_capacity ? parseInt(r.seating_capacity) : null,
-        square_meters: r.square_meters ? parseFloat(r.square_meters) : null,
-        opening_date: r.opening_date,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        franchisee_id: c.franchisee_id,
+        franchisee_name: (c as any).franchisee_name ?? null,
+        franchisee_email: (c as any).franchisee_email ?? null,
+        company_tax_id: (c as any).company_tax_id ?? null,
+        seating_capacity: typeof c.seating_capacity === 'string' ? parseInt(c.seating_capacity) : c.seating_capacity ?? null,
+        square_meters: typeof c.square_meters === 'string' ? parseFloat(c.square_meters) : c.square_meters ?? null,
+        opening_date: c.opening_date ?? null,
+        created_at: c.created_at || new Date().toISOString(),
+        updated_at: c.updated_at || new Date().toISOString(),
       })) as Restaurant[];
 
-      // Filter by accessible centres if not admin
-      if (!isAdmin && centros.length > 0) {
-        allRestaurants = allRestaurants.filter(r => centros.includes(r.codigo));
+      if (!isAdmin && normalizados.length > 0) {
+        allRestaurants = allRestaurants.filter(r => normalizados.includes(r.codigo?.trim().toUpperCase()));
         console.log('[RestaurantContext] Filtered to accessible centres:', allRestaurants.length);
       }
 
