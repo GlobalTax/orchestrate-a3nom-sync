@@ -5,6 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const BUSINESS_ID = 'MCDONALDS_ES'; // Todos usan el mismo
+
 interface OrquestService {
   id: string;
   name: string;
@@ -15,7 +17,6 @@ interface OrquestService {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -23,75 +24,108 @@ Deno.serve(async (req) => {
   try {
     console.log('🔄 Iniciando sincronización de servicios de Orquest...')
 
-    // Get Orquest configuration
     const orquestBaseUrl = Deno.env.get('ORQUEST_BASE_URL')
-    const orquestCookie = Deno.env.get('ORQUEST_COOKIE_JSESSIONID')
-
-    if (!orquestBaseUrl || !orquestCookie) {
-      throw new Error('ORQUEST_BASE_URL y ORQUEST_COOKIE_JSESSIONID deben estar configurados')
+    if (!orquestBaseUrl) {
+      throw new Error('ORQUEST_BASE_URL debe estar configurado')
     }
 
-    // Call Orquest API to get services
-    const servicesUrl = `${orquestBaseUrl}/api/services`
-    console.log(`📡 Consultando servicios: ${servicesUrl}`)
-
-    const orquestResponse = await fetch(servicesUrl, {
-      headers: {
-        'Cookie': `JSESSIONID=${orquestCookie}`,
-        'Content-Type': 'application/json',
-      }
-    })
-
-    if (!orquestResponse.ok) {
-      const errorText = await orquestResponse.text()
-      throw new Error(`Error al obtener servicios de Orquest: ${orquestResponse.status} - ${errorText}`)
-    }
-
-    const services: OrquestService[] = await orquestResponse.json()
-    console.log(`✅ Se obtuvieron ${services.length} servicios de Orquest`)
-
-    if (services.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No hay servicios para sincronizar', count: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      )
-    }
-
-    // Create Supabase client with service role for bypassing RLS
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Transform and upsert services to Supabase
-    const servicesToUpsert = services.map((service) => ({
-      id: service.id,
-      nombre: service.name,
-      zona_horaria: service.timeZone || null,
-      latitud: service.lat || null,
-      longitud: service.lon || null,
-      datos_completos: service,
-      updated_at: new Date().toISOString()
-    }))
+    // Obtener todos los franquiciados con API Key configurada
+    const { data: franchisees, error: franchiseesError } = await supabaseClient
+      .from('franchisees')
+      .select('id, name, email, orquest_api_key')
+      .not('orquest_api_key', 'is', null)
 
-    console.log(`💾 Guardando ${servicesToUpsert.length} servicios en Supabase...`)
+    if (franchiseesError) throw franchiseesError
 
-    const { error } = await supabaseClient
-      .from('orquest_services')
-      .upsert(servicesToUpsert, { onConflict: 'id' })
-
-    if (error) {
-      console.error('❌ Error al guardar en Supabase:', error)
-      throw new Error(`Error al guardar servicios: ${error.message}`)
+    if (!franchisees || franchisees.length === 0) {
+      console.warn('⚠️ No hay franquiciados con API Key configurada')
+      
+      // Fallback: Intentar sincronizar con Cookie global
+      return await syncWithGlobalAuth(supabaseClient, orquestBaseUrl)
     }
 
-    const successMessage = `✅ Sincronización completada: ${servicesToUpsert.length} servicios actualizados`
-    console.log(successMessage)
+    console.log(`📋 Sincronizando servicios para ${franchisees.length} franquiciados...`)
+
+    const results = []
+    let totalServicesUpdated = 0
+
+    for (const franchisee of franchisees) {
+      try {
+        console.log(`\n🔍 Franquiciado: ${franchisee.name} (${franchisee.email})`)
+
+        // Endpoint documentado en Swagger
+        const servicesUrl = `${orquestBaseUrl}/importer/api/v2/businesses/${BUSINESS_ID}/services`
+        
+        const response = await fetch(servicesUrl, {
+          headers: {
+            'Authorization': `Bearer ${franchisee.orquest_api_key}`,
+            'Content-Type': 'application/json',
+          }
+        })
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
+
+        const services: OrquestService[] = await response.json()
+        console.log(`  ✅ Obtenidos ${services.length} servicios`)
+
+        if (services.length > 0) {
+          // Transformar y guardar servicios con referencia al franquiciado
+          const servicesToUpsert = services.map((service) => ({
+            id: service.id,
+            nombre: service.name,
+            zona_horaria: service.timeZone || null,
+            latitud: service.lat || null,
+            longitud: service.lon || null,
+            datos_completos: service,
+            franchisee_id: franchisee.id, // ✨ Vincular al franquiciado
+            updated_at: new Date().toISOString()
+          }))
+
+          const { error: upsertError } = await supabaseClient
+            .from('orquest_services')
+            .upsert(servicesToUpsert, { onConflict: 'id' })
+
+          if (upsertError) throw upsertError
+
+          totalServicesUpdated += servicesToUpsert.length
+          results.push({
+            franchisee: franchisee.name,
+            email: franchisee.email,
+            services: servicesToUpsert.length,
+            status: 'success'
+          })
+          console.log(`  💾 ${servicesToUpsert.length} servicios guardados`)
+        }
+
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+        console.error(`  ❌ Error en ${franchisee.name}:`, errorMessage)
+        results.push({
+          franchisee: franchisee.name,
+          email: franchisee.email,
+          error: errorMessage,
+          status: 'error'
+        })
+      }
+    }
+
+    const successMessage = `✅ Sincronización completada: ${totalServicesUpdated} servicios actualizados de ${franchisees.length} franquiciados`
+    console.log(`\n${successMessage}`)
 
     return new Response(
       JSON.stringify({ 
         message: successMessage,
-        count: servicesToUpsert.length,
+        total_services: totalServicesUpdated,
+        franchisees_processed: franchisees.length,
+        results,
         timestamp: new Date().toISOString()
       }),
       { 
@@ -115,3 +149,53 @@ Deno.serve(async (req) => {
     )
   }
 })
+
+// Función auxiliar para fallback con Cookie global
+async function syncWithGlobalAuth(supabaseClient: any, baseUrl: string) {
+  console.log('⚠️ Usando autenticación global (Cookie) como fallback...')
+  
+  const orquestCookie = Deno.env.get('ORQUEST_COOKIE_JSESSIONID')
+  if (!orquestCookie) {
+    throw new Error('No hay ni API Keys de franquiciados ni Cookie global configurada')
+  }
+
+  const servicesUrl = `${baseUrl}/api/services`
+  const response = await fetch(servicesUrl, {
+    headers: {
+      'Cookie': `JSESSIONID=${orquestCookie}`,
+      'Content-Type': 'application/json',
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error(`Error con autenticación global: ${response.status}`)
+  }
+
+  const services: OrquestService[] = await response.json()
+  
+  const servicesToUpsert = services.map((service) => ({
+    id: service.id,
+    nombre: service.name,
+    zona_horaria: service.timeZone || null,
+    latitud: service.lat || null,
+    longitud: service.lon || null,
+    datos_completos: service,
+    franchisee_id: null, // Sin franquiciado específico
+    updated_at: new Date().toISOString()
+  }))
+
+  const { error } = await supabaseClient
+    .from('orquest_services')
+    .upsert(servicesToUpsert, { onConflict: 'id' })
+
+  if (error) throw error
+
+  return new Response(
+    JSON.stringify({ 
+      message: `Sincronización global: ${servicesToUpsert.length} servicios`,
+      count: servicesToUpsert.length,
+      method: 'global_cookie'
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+  )
+}

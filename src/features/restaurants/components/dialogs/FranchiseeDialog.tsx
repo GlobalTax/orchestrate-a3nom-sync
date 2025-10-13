@@ -80,6 +80,39 @@ export const FranchiseeDialog = ({
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="orquest_api_key">API Key de Orquest</Label>
+            <Input
+              id="orquest_api_key"
+              type="password"
+              value={formData.orquest_api_key || ''}
+              onChange={(e) => onFormDataChange({ 
+                ...formData, 
+                orquest_api_key: e.target.value || undefined 
+              })}
+              placeholder="Bearer Token de Orquest"
+            />
+            <p className="text-xs text-muted-foreground">
+              API Key proporcionada por Orquest. Dejar en blanco usará autenticación global.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="orquest_business_id">Business ID de Orquest</Label>
+            <Input
+              id="orquest_business_id"
+              value={formData.orquest_business_id || 'MCDONALDS_ES'}
+              onChange={(e) => onFormDataChange({ 
+                ...formData, 
+                orquest_business_id: e.target.value || 'MCDONALDS_ES' 
+              })}
+              placeholder="MCDONALDS_ES"
+            />
+            <p className="text-xs text-muted-foreground">
+              ID del negocio en Orquest (por defecto: MCDONALDS_ES)
+            </p>
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar

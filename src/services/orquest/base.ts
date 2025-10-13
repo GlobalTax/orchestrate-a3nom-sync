@@ -6,6 +6,7 @@ export interface OrquestProxyRequest {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   query?: Record<string, string>;
   body?: any;
+  franchiseeId?: string; // ID del franquiciado para autenticación multi-tenant
 }
 
 interface OrquestError {
@@ -33,7 +34,13 @@ export async function callOrquestAPI<T>(
     console.log(`Calling Orquest API: ${request.method || 'GET'} ${request.path}`);
     
     const { data, error } = await supabase.functions.invoke('orquest_proxy', {
-      body: request
+      body: {
+        path: request.path,
+        method: request.method,
+        query: request.query,
+        body: request.body,
+        franchiseeId: request.franchiseeId, // Pasar franchiseeId al proxy
+      }
     });
 
     if (error) {

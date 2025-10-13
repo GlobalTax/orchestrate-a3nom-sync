@@ -8,8 +8,10 @@ export interface AbsenceParams {
 
 /**
  * Get absences from Orquest
+ * @param params - Parámetros de búsqueda
+ * @param franchiseeId - (Opcional) ID del franquiciado para usar su API Key
  */
-export async function getAbsences(params: AbsenceParams) {
+export async function getAbsences(params: AbsenceParams, franchiseeId?: string) {
   const query: Record<string, string> = {
     startDate: params.startDate,
     endDate: params.endDate,
@@ -20,6 +22,7 @@ export async function getAbsences(params: AbsenceParams) {
   return callOrquestAPI({
     path: '/api/absences',
     method: 'GET',
-    query
+    query,
+    franchiseeId,
   });
 }

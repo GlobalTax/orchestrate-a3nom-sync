@@ -59,6 +59,7 @@ export const FranchiseesTab = ({
                   <TableHead>Nombre</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>CIF/NIF</TableHead>
+                  <TableHead>API Key Orquest</TableHead>
                   <TableHead>Restaurantes</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -66,7 +67,7 @@ export const FranchiseesTab = ({
               <TableBody>
                 {franchisees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       No hay franquiciados registrados
                     </TableCell>
                   </TableRow>
@@ -83,6 +84,13 @@ export const FranchiseesTab = ({
                           <code className="text-xs bg-muted px-2 py-1 rounded">
                             {franchisee.company_tax_id || "N/A"}
                           </code>
+                        </TableCell>
+                        <TableCell>
+                          {franchisee.orquest_api_key ? (
+                            <Badge variant="default" className="bg-green-500">✓ Configurada</Badge>
+                          ) : (
+                            <Badge variant="secondary">⚠ Sin configurar</Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">

@@ -28,16 +28,23 @@ export const useFranchisees = (isAdmin: boolean) => {
 
   const saveMutation = useMutation({
     mutationFn: async ({ data, editingId }: { data: FranchiseeFormData; editingId?: string }) => {
+      // Limpiar campos vacíos (convertir "" a null)
+      const cleanData = {
+        ...data,
+        orquest_api_key: data.orquest_api_key?.trim() || null,
+        orquest_business_id: data.orquest_business_id?.trim() || 'MCDONALDS_ES',
+      };
+
       if (editingId) {
         const { error } = await supabase
           .from("franchisees")
-          .update(data)
+          .update(cleanData)
           .eq("id", editingId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("franchisees")
-          .insert([data]);
+          .insert([cleanData]);
         if (error) throw error;
       }
     },

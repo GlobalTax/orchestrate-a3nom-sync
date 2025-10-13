@@ -3,19 +3,22 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Get services from Orquest (real-time)
+ * @param franchiseeId - (Opcional) ID del franquiciado para usar su API Key
  */
-export async function getServices() {
+export async function getServices(franchiseeId?: string) {
   return callOrquestAPI({
     path: '/api/services',
-    method: 'GET'
+    method: 'GET',
+    franchiseeId,
   });
 }
 
 /**
  * Get services from Supabase cache (hybrid approach)
  * Falls back to Orquest API if cache is empty or stale
+ * @param franchiseeId - (Opcional) ID del franquiciado para usar su API Key
  */
-export async function getServicesHybrid() {
+export async function getServicesHybrid(franchiseeId?: string) {
   const CACHE_VALIDITY_HOURS = 6;
   
   try {
@@ -28,7 +31,7 @@ export async function getServicesHybrid() {
     if (error) {
       console.warn('Error al leer caché de servicios:', error);
       // Fall back to real-time API
-      return getServices();
+      return getServices(franchiseeId);
     }
 
     // Check if cache is fresh (updated within last 6 hours)
@@ -52,7 +55,7 @@ export async function getServicesHybrid() {
 
     console.log('⚠️ Caché vacío o desactualizado, consultando Orquest API...');
     // Cache is stale or empty, fetch from API and update cache
-    const freshServices = await getServices() as any[];
+    const freshServices = await getServices(franchiseeId) as any[];
     
     // Update cache in background (no await)
     updateServicesCache(freshServices).catch(err => 
@@ -63,7 +66,7 @@ export async function getServicesHybrid() {
   } catch (error) {
     console.error('Error en getServicesHybrid:', error);
     // Last resort: try real-time API
-    return getServices();
+    return getServices(franchiseeId);
   }
 }
 

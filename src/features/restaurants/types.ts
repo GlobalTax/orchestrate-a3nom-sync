@@ -28,6 +28,8 @@ export interface Franchisee {
   email: string;
   name: string;
   company_tax_id: string | null;
+  orquest_api_key?: string | null;
+  orquest_business_id?: string | null;
 }
 
 export interface RestaurantService {
@@ -95,6 +97,8 @@ export interface FranchiseeFormData {
   email: string;
   name: string;
   company_tax_id: string;
+  orquest_api_key?: string; // API Key de Orquest (Bearer Token)
+  orquest_business_id?: string; // Business ID de Orquest (default: MCDONALDS_ES)
 }
 
 export interface ServiceFormData {

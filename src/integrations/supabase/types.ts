@@ -405,6 +405,8 @@ export type Database = {
           email: string
           id: string
           name: string
+          orquest_api_key: string | null
+          orquest_business_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -413,6 +415,8 @@ export type Database = {
           email: string
           id?: string
           name: string
+          orquest_api_key?: string | null
+          orquest_business_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -421,6 +425,8 @@ export type Database = {
           email?: string
           id?: string
           name?: string
+          orquest_api_key?: string | null
+          orquest_business_id?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -572,6 +578,7 @@ export type Database = {
       orquest_services: {
         Row: {
           datos_completos: Json | null
+          franchisee_id: string | null
           id: string
           latitud: number | null
           longitud: number | null
@@ -581,6 +588,7 @@ export type Database = {
         }
         Insert: {
           datos_completos?: Json | null
+          franchisee_id?: string | null
           id: string
           latitud?: number | null
           longitud?: number | null
@@ -590,6 +598,7 @@ export type Database = {
         }
         Update: {
           datos_completos?: Json | null
+          franchisee_id?: string | null
           id?: string
           latitud?: number | null
           longitud?: number | null
@@ -597,7 +606,15 @@ export type Database = {
           updated_at?: string | null
           zona_horaria?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orquest_services_franchisee_id_fkey"
+            columns: ["franchisee_id"]
+            isOneToOne: false
+            referencedRelation: "franchisees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payrolls: {
         Row: {
