@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Building2, Plus, Info } from "lucide-react";
 
 // Custom hooks
 import { useRestaurants } from "@/features/restaurants/hooks/useRestaurants";
+import { useRestaurantsDirect } from "@/features/restaurants/hooks/useRestaurantsDirect";
 import { useFranchisees } from "@/features/restaurants/hooks/useFranchisees";
 import { useServices } from "@/features/restaurants/hooks/useServices";
 import { useCostCentres } from "@/features/restaurants/hooks/useCostCentres";
@@ -49,6 +51,7 @@ const Restaurantes = () => {
 
   // State management
   const [activeTab, setActiveTab] = useState("general");
+  const [loadMode, setLoadMode] = useState<'rpc' | 'direct'>('rpc');
   const [testingCentre, setTestingCentre] = useState<string | null>(null);
   
   // Restaurant dialog state
@@ -103,15 +106,28 @@ const Restaurantes = () => {
   const [selectedCentroForGestor, setSelectedCentroForGestor] = useState("");
 
   // Custom hooks
+  // Hook para modo RPC (actual)
   const {
-    restaurants,
-    isLoading: loadingRestaurants,
-    error: restaurantsError,
+    restaurants: restaurantsRPC,
+    isLoading: loadingRPC,
+    error: errorRPC,
     save: saveRestaurant,
     isSaving: isSavingRestaurant,
     toggleActive: toggleRestaurantActive,
     testConnection,
   } = useRestaurants(isAdmin);
+
+  // Hook para modo DIRECT (nuevo)
+  const {
+    restaurants: restaurantsDirect,
+    isLoading: loadingDirect,
+    error: errorDirect,
+  } = useRestaurantsDirect(showInactive);
+
+  // Seleccionar datos según el modo activo
+  const restaurants = loadMode === 'rpc' ? restaurantsRPC : restaurantsDirect;
+  const loadingRestaurants = loadMode === 'rpc' ? loadingRPC : loadingDirect;
+  const restaurantsError = loadMode === 'rpc' ? errorRPC : errorDirect;
 
   const {
     franchisees,
@@ -349,15 +365,54 @@ const Restaurantes = () => {
           </Badge>
         </div>
 
+        {/* Control de modo de carga */}
+        <div className="flex items-center space-x-4 p-4 bg-accent/50 rounded-lg border-2 border-accent">
+          <Label className="font-semibold text-sm">Modo de carga:</Label>
+          <RadioGroup value={loadMode} onValueChange={(val) => setLoadMode(val as 'rpc' | 'direct')} className="flex space-x-4">
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="rpc" id="mode-rpc" />
+              <Label htmlFor="mode-rpc" className="cursor-pointer">
+                📡 RPC (get_restaurants_with_franchisees)
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="direct" id="mode-direct" />
+              <Label htmlFor="mode-direct" className="cursor-pointer">
+                🔍 Direct (query a centres)
+              </Label>
+            </div>
+          </RadioGroup>
+          <Badge variant={loadMode === 'rpc' ? 'default' : 'secondary'}>
+            {loadMode === 'rpc' ? `RPC: ${restaurantsRPC.length}` : `Direct: ${restaurantsDirect.length}`}
+          </Badge>
+        </div>
+
+        {loadMode === 'direct' && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              ⚠️ Modo solo lectura. Para editar restaurantes, cambia a modo RPC.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Diagnostic Info (Dev Mode) */}
         {process.env.NODE_ENV === 'development' && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>Diagnóstico del Sistema</AlertTitle>
             <AlertDescription className="space-y-1">
-              <div>✅ Restaurantes: {restaurants.length} cargados ({showInactive ? 'todos' : 'solo activos'})</div>
+              <div className="font-semibold">Modo actual: {loadMode === 'rpc' ? '📡 RPC' : '🔍 Direct'}</div>
+              <div>✅ RPC devolvió: {restaurantsRPC.length} restaurantes</div>
+              <div>✅ Direct devolvió: {restaurantsDirect.length} restaurantes</div>
+              {restaurantsRPC.length !== restaurantsDirect.length && (
+                <div className="text-destructive font-bold">
+                  ⚠️ DISCREPANCIA: RPC ({restaurantsRPC.length}) ≠ Direct ({restaurantsDirect.length})
+                </div>
+              )}
               <div>✅ Franquiciados: {franchisees.length}</div>
               <div>✅ Services: {Object.keys(servicesCount).length} restaurantes con services</div>
+              <div>Filtro activo: {showInactive ? 'Todos' : 'Solo activos'}</div>
               {restaurantsError && <div className="text-destructive">❌ Error: {(restaurantsError as any).message}</div>}
             </AlertDescription>
           </Alert>
@@ -374,7 +429,10 @@ const Restaurantes = () => {
 
           <TabsContent value="general" className="space-y-6">
             <div className="flex justify-end">
-              <Button onClick={() => setRestaurantDialogOpen(true)}>
+              <Button 
+                onClick={() => setRestaurantDialogOpen(true)}
+                disabled={loadMode === 'direct'}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo Restaurante
               </Button>
