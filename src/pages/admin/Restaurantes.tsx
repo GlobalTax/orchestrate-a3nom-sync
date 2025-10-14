@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useRestaurant } from "@/contexts/RestaurantContext";
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Loader2, Building2, Plus, Info } from "lucide-react";
 
 // Custom hooks
@@ -41,6 +45,7 @@ import type {
 
 const Restaurantes = () => {
   const { isAdmin, loading: roleLoading } = useUserRole();
+  const { showInactive, setShowInactive } = useRestaurant();
 
   // State management
   const [activeTab, setActiveTab] = useState("general");
@@ -329,13 +334,28 @@ const Restaurantes = () => {
           </div>
         </div>
 
+        <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg">
+          <Switch
+            id="show-inactive"
+            checked={showInactive}
+            onCheckedChange={setShowInactive}
+          />
+          <Label htmlFor="show-inactive" className="cursor-pointer">
+            Mostrar restaurantes inactivos
+          </Label>
+          <Badge variant="outline" className="ml-2">
+            {restaurants.length} restaurante{restaurants.length !== 1 ? 's' : ''} 
+            {showInactive ? ' (activos + inactivos)' : ' (solo activos)'}
+          </Badge>
+        </div>
+
         {/* Diagnostic Info (Dev Mode) */}
         {process.env.NODE_ENV === 'development' && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>Diagnóstico del Sistema</AlertTitle>
             <AlertDescription className="space-y-1">
-              <div>✅ Restaurantes: {restaurants.length} cargados</div>
+              <div>✅ Restaurantes: {restaurants.length} cargados ({showInactive ? 'todos' : 'solo activos'})</div>
               <div>✅ Franquiciados: {franchisees.length}</div>
               <div>✅ Services: {Object.keys(servicesCount).length} restaurantes con services</div>
               {restaurantsError && <div className="text-destructive">❌ Error: {(restaurantsError as any).message}</div>}

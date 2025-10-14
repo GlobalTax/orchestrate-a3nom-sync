@@ -35,19 +35,27 @@ interface RestaurantContextType {
   isLoading: boolean;
   isRestaurantSelected: () => boolean;
   getCurrentRestaurantCode: () => string | null;
+  showInactive: boolean;
+  setShowInactive: (value: boolean) => void;
 }
 
 const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);
 
 const STORAGE_KEY = "selected_restaurant_id";
+const SHOW_INACTIVE_KEY = "show_inactive_centres";
 
 export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
   const { centros, isAdmin, loading: roleLoading } = useUserRole();
   const [selectedRestaurant, setSelectedRestaurantState] = useState<Restaurant | null>(null);
+  
+  const [showInactive, setShowInactiveState] = useState<boolean>(() => {
+    const saved = localStorage.getItem(SHOW_INACTIVE_KEY);
+    return saved === 'true';
+  });
 
   // Fetch all accessible restaurants
   const { data: restaurants = [], isLoading: restaurantsLoading } = useQuery({
-    queryKey: ['restaurants_context', centros, isAdmin],
+    queryKey: ['restaurants_context', centros, isAdmin, showInactive],
     queryFn: async () => {
       const userType = isAdmin ? 'ADMIN' : 'GESTOR';
       
@@ -65,16 +73,21 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
         return [];
       }
 
-      // PASO 1: Contar TODOS los restaurantes activos en la BD (sin filtros)
-      const { count: totalActivosDb, error: countError } = await supabase
+      // PASO 1: Contar restaurantes en la BD según el filtro actual
+      let countQuery = supabase
         .from('centres')
-        .select('*', { count: 'exact', head: true })
-        .eq('activo', true);
+        .select('*', { count: 'exact', head: true });
+      
+      if (!showInactive) {
+        countQuery = countQuery.eq('activo', true);
+      }
+      
+      const { count: totalDb, error: countError } = await countQuery;
 
       if (countError) {
         console.error('[RestaurantContext] ❌ Error counting centres:', countError);
       } else {
-        console.log(`[RestaurantContext] 📊 Total activos en BD: ${totalActivosDb}`);
+        console.log(`[RestaurantContext] 📊 Total en BD (${showInactive ? 'todos' : 'solo activos'}): ${totalDb}`);
       }
 
       // PASO 2: Ejecutar query principal
@@ -86,8 +99,11 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
           site_number, orquest_service_id, orquest_business_id, activo,
           franchisee_id, franchisee_name, franchisee_email, company_tax_id,
           seating_capacity, square_meters, opening_date, created_at, updated_at
-        `)
-        .eq('activo', true);
+        `);
+
+      if (!showInactive) {
+        query = query.eq('activo', true);
+      }
 
       if (!isAdmin && normalizados.length > 0) {
         console.log(`[RestaurantContext] 🔒 Aplicando filtro gestor con centros:`, normalizados);
@@ -120,7 +136,7 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
         site_number: c.site_number,
         orquest_service_id: c.orquest_service_id,
         orquest_business_id: c.orquest_business_id,
-        activo: true,
+        activo: c.activo,
         franchisee_id: c.franchisee_id,
         franchisee_name: (c as any).franchisee_name ?? null,
         franchisee_email: (c as any).franchisee_email ?? null,
@@ -150,38 +166,39 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
 
       // PASO 5: DIAGNÓSTICO Y TOASTS
       const finalCount = allRestaurants.length;
+      const filterStatus = showInactive ? 'todos (activos + inactivos)' : 'solo activos';
 
       if (isAdmin) {
         // ADMIN: Comparar con total en BD
-        console.log(`[RestaurantContext] ✅ Admin ve ${finalCount} de ${totalActivosDb} restaurantes activos`);
+        console.log(`[RestaurantContext] ✅ Admin ve ${finalCount} de ${totalDb} restaurantes (${filterStatus})`);
         
-        if (finalCount === 0 && totalActivosDb && totalActivosDb > 0) {
+        if (finalCount === 0 && totalDb && totalDb > 0) {
           toast.error('🚨 Error crítico de permisos (Admin)', {
-            description: `Hay ${totalActivosDb} restaurantes activos en la BD pero no son accesibles. Revisa las políticas RLS.`,
+            description: `Hay ${totalDb} restaurantes en la BD pero no son accesibles. Revisa las políticas RLS.`,
             duration: 15000,
           });
-        } else if (finalCount !== totalActivosDb) {
+        } else if (finalCount !== totalDb) {
           toast.warning('⚠️ Discrepancia en datos (Admin)', {
-            description: `Se cargaron ${finalCount} restaurantes pero hay ${totalActivosDb} activos en la BD.`,
+            description: `Se cargaron ${finalCount} restaurantes pero hay ${totalDb} en la BD (${filterStatus}).`,
             duration: 8000,
           });
         } else {
-          toast.success(`✅ Admin: ${finalCount} restaurantes cargados`, {
+          toast.success(`✅ Admin: ${finalCount} restaurantes cargados (${filterStatus})`, {
             duration: 3000,
           });
         }
       } else {
         // GESTOR: Mostrar filtrado
-        console.log(`[RestaurantContext] ✅ Gestor ve ${finalCount} de ${totalActivosDb} restaurantes activos (filtrado por ${centros.length} centros)`);
+        console.log(`[RestaurantContext] ✅ Gestor ve ${finalCount} restaurantes (${filterStatus}, filtrado por ${centros.length} centros)`);
         
         if (finalCount === 0) {
           toast.warning('⚠️ No tienes acceso a restaurantes', {
-            description: `Hay ${totalActivosDb} restaurantes en la BD pero no tienes acceso a ninguno de tus ${centros.length} centros asignados: ${centros.join(', ')}`,
+            description: `Filtrados por: ${centros.slice(0, 3).join(', ')}${centros.length > 3 ? '...' : ''}`,
             duration: 10000,
           });
         } else {
-          toast.success(`✅ Gestor: ${finalCount} restaurantes accesibles`, {
-            description: `De ${totalActivosDb} restaurantes totales, tienes acceso a ${finalCount} (filtrados por: ${centros.slice(0, 3).join(', ')}${centros.length > 3 ? '...' : ''})`,
+          toast.success(`✅ Gestor: ${finalCount} restaurantes accesibles (${filterStatus})`, {
+            description: `Filtrados por: ${centros.slice(0, 3).join(', ')}${centros.length > 3 ? '...' : ''}`,
             duration: 5000,
           });
         }
@@ -227,6 +244,11 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
   
   const getCurrentRestaurantCode = () => selectedRestaurant?.codigo || null;
 
+  const setShowInactive = (value: boolean) => {
+    setShowInactiveState(value);
+    localStorage.setItem(SHOW_INACTIVE_KEY, value.toString());
+  };
+
   const isLoading = roleLoading || restaurantsLoading;
 
   return (
@@ -238,6 +260,8 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isRestaurantSelected,
         getCurrentRestaurantCode,
+        showInactive,
+        setShowInactive,
       }}
     >
       {children}
