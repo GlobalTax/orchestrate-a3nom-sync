@@ -249,12 +249,13 @@ export default function RestaurantImport() {
           });
 
           const restaurantData: any = {
-            name: mappedRow.nombre,
+            codigo: mappedRow.site_number, // Use site_number as codigo for duplicate detection
+            nombre: mappedRow.nombre,
             site_number: mappedRow.site_number,
-            address: mappedRow.direccion,
-            city: mappedRow.ciudad,
+            direccion: mappedRow.direccion,
+            ciudad: mappedRow.ciudad,
             state: mappedRow.state,
-            country: mappedRow.pais || "España",
+            pais: mappedRow.pais || "España",
             postal_code: mappedRow.postal_code,
             seating_capacity: mappedRow.seating_capacity,
             square_meters: mappedRow.square_meters,
@@ -270,11 +271,11 @@ export default function RestaurantImport() {
               if (error) throw error;
               result.inserted++;
             } else if (importStrategy === "upsert") {
-              const { data: existing } = await supabase
-                .from("centres")
-                .select("id")
-                .eq("site_number", restaurantData.site_number)
-                .maybeSingle();
+            const { data: existing } = await supabase
+              .from("centres")
+              .select("id")
+              .eq("codigo", restaurantData.codigo)
+              .maybeSingle();
 
               if (existing) {
                 const { error } = await supabase
@@ -289,11 +290,11 @@ export default function RestaurantImport() {
                 result.inserted++;
               }
             } else {
-              const { data: existing } = await supabase
-                .from("centres")
-                .select("id")
-                .eq("site_number", restaurantData.site_number)
-                .maybeSingle();
+            const { data: existing } = await supabase
+              .from("centres")
+              .select("id")
+              .eq("codigo", restaurantData.codigo)
+              .maybeSingle();
 
               if (existing) {
                 result.skipped++;
