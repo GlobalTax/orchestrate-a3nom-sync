@@ -37,6 +37,15 @@ export const useUserRole = () => {
 
         setRoles(userRoles);
         setCentros(userCentros);
+
+        console.log('[useUserRole] 🔐 User roles loaded:', {
+          userId: user.id,
+          email: user.email,
+          roles: userRoles,
+          centros: userCentros,
+          isAdmin: userRoles.includes('admin'),
+          isGestor: userRoles.includes('gestor'),
+        });
       } catch (error) {
         console.error("Error fetching user roles:", error);
         setRoles([]);

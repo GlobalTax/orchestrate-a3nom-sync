@@ -2,6 +2,7 @@ import { createContext, useContext, useState, ReactNode, useEffect } from "react
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { toast } from "sonner";
 
 export interface Restaurant {
   id: string;
@@ -48,10 +49,35 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
   const { data: restaurants = [], isLoading: restaurantsLoading } = useQuery({
     queryKey: ['restaurants_context', centros, isAdmin],
     queryFn: async () => {
-      if (!isAdmin && centros.length === 0) return [];
+      const userType = isAdmin ? 'ADMIN' : 'GESTOR';
       
-      console.log('[RestaurantContext] Fetching centres. isAdmin:', isAdmin, 'centros:', centros);
-      
+      console.log(`[RestaurantContext] 🔍 Fetching as ${userType}`, {
+        isAdmin,
+        centros,
+        centrosCount: centros.length
+      });
+
+      if (!isAdmin && centros.length === 0) {
+        console.warn('[RestaurantContext] ⚠️ Gestor sin centros asignados, retornando array vacío');
+        toast.warning('⚠️ No tienes restaurantes asignados', {
+          description: 'Contacta con un administrador para que te asigne acceso a restaurantes'
+        });
+        return [];
+      }
+
+      // PASO 1: Contar TODOS los restaurantes activos en la BD (sin filtros)
+      const { count: totalActivosDb, error: countError } = await supabase
+        .from('centres')
+        .select('*', { count: 'exact', head: true })
+        .eq('activo', true);
+
+      if (countError) {
+        console.error('[RestaurantContext] ❌ Error counting centres:', countError);
+      } else {
+        console.log(`[RestaurantContext] 📊 Total activos en BD: ${totalActivosDb}`);
+      }
+
+      // PASO 2: Ejecutar query principal
       const normalizados = centros.map(c => c.trim().toUpperCase());
       let query = supabase
         .from('centres')
@@ -64,17 +90,24 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
         .eq('activo', true);
 
       if (!isAdmin && normalizados.length > 0) {
+        console.log(`[RestaurantContext] 🔒 Aplicando filtro gestor con centros:`, normalizados);
         query = query.in('codigo', normalizados);
       }
 
       const { data, error } = await query.order('nombre');
+      
       if (error) {
-        console.error('[RestaurantContext] Error fetching centres:', error);
+        console.error('[RestaurantContext] ❌ Error fetching centres:', error);
+        toast.error('Error al cargar restaurantes', {
+          description: error.message
+        });
         throw error;
       }
 
-      console.log('[RestaurantContext] Raw centres:', data?.length || 0);
+      const rawCount = data?.length || 0;
+      console.log(`[RestaurantContext] 📦 Query devolvió ${rawCount} filas (antes de filtro manual)`);
 
+      // PASO 3: Mapear datos
       let allRestaurants = (data || []).map((c) => ({
         id: c.id,
         codigo: c.codigo,
@@ -99,12 +132,62 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
         updated_at: c.updated_at || new Date().toISOString(),
       })) as Restaurant[];
 
+      // PASO 4: Filtro adicional para gestores
+      const beforeFilterCount = allRestaurants.length;
+      
       if (!isAdmin && normalizados.length > 0) {
-        allRestaurants = allRestaurants.filter(r => normalizados.includes(r.codigo?.trim().toUpperCase()));
-        console.log('[RestaurantContext] Filtered to accessible centres:', allRestaurants.length);
+        allRestaurants = allRestaurants.filter(r => 
+          normalizados.includes(r.codigo?.trim().toUpperCase())
+        );
+        
+        const afterFilterCount = allRestaurants.length;
+        console.log(`[RestaurantContext] 🔍 Filtro manual: ${beforeFilterCount} → ${afterFilterCount} restaurantes`);
+        
+        if (beforeFilterCount !== afterFilterCount) {
+          console.warn(`[RestaurantContext] ⚠️ El filtro manual eliminó ${beforeFilterCount - afterFilterCount} restaurantes`);
+        }
       }
 
-      console.log('[RestaurantContext] Returning', allRestaurants.length, 'restaurants');
+      // PASO 5: DIAGNÓSTICO Y TOASTS
+      const finalCount = allRestaurants.length;
+
+      if (isAdmin) {
+        // ADMIN: Comparar con total en BD
+        console.log(`[RestaurantContext] ✅ Admin ve ${finalCount} de ${totalActivosDb} restaurantes activos`);
+        
+        if (finalCount === 0 && totalActivosDb && totalActivosDb > 0) {
+          toast.error('🚨 Error crítico de permisos (Admin)', {
+            description: `Hay ${totalActivosDb} restaurantes activos en la BD pero no son accesibles. Revisa las políticas RLS.`,
+            duration: 15000,
+          });
+        } else if (finalCount !== totalActivosDb) {
+          toast.warning('⚠️ Discrepancia en datos (Admin)', {
+            description: `Se cargaron ${finalCount} restaurantes pero hay ${totalActivosDb} activos en la BD.`,
+            duration: 8000,
+          });
+        } else {
+          toast.success(`✅ Admin: ${finalCount} restaurantes cargados`, {
+            duration: 3000,
+          });
+        }
+      } else {
+        // GESTOR: Mostrar filtrado
+        console.log(`[RestaurantContext] ✅ Gestor ve ${finalCount} de ${totalActivosDb} restaurantes activos (filtrado por ${centros.length} centros)`);
+        
+        if (finalCount === 0) {
+          toast.warning('⚠️ No tienes acceso a restaurantes', {
+            description: `Hay ${totalActivosDb} restaurantes en la BD pero no tienes acceso a ninguno de tus ${centros.length} centros asignados: ${centros.join(', ')}`,
+            duration: 10000,
+          });
+        } else {
+          toast.success(`✅ Gestor: ${finalCount} restaurantes accesibles`, {
+            description: `De ${totalActivosDb} restaurantes totales, tienes acceso a ${finalCount} (filtrados por: ${centros.slice(0, 3).join(', ')}${centros.length > 3 ? '...' : ''})`,
+            duration: 5000,
+          });
+        }
+      }
+
+      console.log(`[RestaurantContext] 🎯 Retornando ${finalCount} restaurantes finales`);
       return allRestaurants;
     },
     enabled: !roleLoading,

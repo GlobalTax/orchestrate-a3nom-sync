@@ -9,16 +9,57 @@ export const useRestaurants = (isAdmin: boolean) => {
   const { data: restaurants = [], isLoading, error } = useQuery({
     queryKey: ["restaurants_with_franchisees"],
     queryFn: async () => {
-      console.info("[useRestaurants] Fetching via RPC get_restaurants_with_franchisees");
+      console.info("[useRestaurants] 🔍 Fetching restaurants as ADMIN via RPC");
+      
+      // Primero, contar cuántos restaurantes hay realmente en la BD
+      const { count: totalInDb, error: countError } = await supabase
+        .from('centres')
+        .select('*', { count: 'exact', head: true })
+        .eq('activo', true);
+
+      if (countError) {
+        console.error("[useRestaurants] ❌ Error counting centres:", countError);
+      } else {
+        console.info(`[useRestaurants] 📊 Total restaurants in DB (activo=true): ${totalInDb}`);
+      }
+
+      // Ahora ejecutar la RPC
       const { data, error } = await supabase.rpc("get_restaurants_with_franchisees");
       
       if (error) {
-        console.error("[useRestaurants] Error:", error);
-        toast.error("Error al cargar restaurantes: " + error.message);
+        console.error("[useRestaurants] ❌ RPC Error:", error);
+        toast.error("Error al cargar restaurantes", {
+          description: error.message
+        });
         throw error;
       }
 
-      console.info("[useRestaurants] Fetched count:", data?.length || 0);
+      const fetchedCount = data?.length || 0;
+      console.info(`[useRestaurants] ✅ RPC returned: ${fetchedCount} restaurants`);
+
+      // DIAGNÓSTICO CRÍTICO: Comparar RPC vs BD
+      if (totalInDb && fetchedCount !== totalInDb) {
+        const message = `⚠️ DISCREPANCIA DETECTADA: La RPC devolvió ${fetchedCount} restaurantes pero la BD tiene ${totalInDb} activos`;
+        console.warn(`[useRestaurants] ${message}`);
+        
+        toast.warning('⚠️ Problema de sincronización', {
+          description: `RPC devolvió ${fetchedCount} pero hay ${totalInDb} en la BD. Puede ser necesario revisar migraciones o RLS policies.`,
+          duration: 10000,
+        });
+      } else if (fetchedCount === 0 && totalInDb && totalInDb > 0) {
+        const message = `🚨 CRÍTICO: La RPC devolvió 0 restaurantes pero hay ${totalInDb} en la BD`;
+        console.error(`[useRestaurants] ${message}`);
+        
+        toast.error('🚨 Error crítico de permisos', {
+          description: `La función RPC no devuelve datos. Hay ${totalInDb} restaurantes en la BD pero no son accesibles. Revisa las políticas RLS y la función get_restaurants_with_franchisees().`,
+          duration: 15000,
+        });
+      } else {
+        toast.success(`✅ ${fetchedCount} restaurantes cargados correctamente`, {
+          duration: 3000,
+        });
+      }
+
       return (data || []).map(r => ({
         id: r.id,
         codigo: r.site_number || r.id,
