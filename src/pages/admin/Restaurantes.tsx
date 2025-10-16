@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useRestaurant } from "@/contexts/RestaurantContext";
 import Layout from "@/components/Layout";
@@ -9,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Building2, Plus, Info } from "lucide-react";
+import { Loader2, Building2, Plus, Info, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 // Custom hooks
 import { useRestaurants } from "@/features/restaurants/hooks/useRestaurants";
@@ -46,6 +48,7 @@ import type {
 } from "@/features/restaurants/types";
 
 const Restaurantes = () => {
+  const queryClient = useQueryClient();
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { showInactive, setShowInactive } = useRestaurant();
 
@@ -310,6 +313,16 @@ const Restaurantes = () => {
     );
   };
 
+  // Cache handler
+  const handleClearCache = () => {
+    queryClient.invalidateQueries({ queryKey: ['restaurants_direct'] });
+    queryClient.invalidateQueries({ queryKey: ['restaurants_context'] });
+    queryClient.invalidateQueries({ queryKey: ['restaurants'] });
+    toast.success('✅ Cache limpiado', {
+      description: 'Se refrescarán los datos desde el servidor'
+    });
+  };
+
   if (roleLoading) {
     return (
       <Layout>
@@ -385,6 +398,14 @@ const Restaurantes = () => {
           <Badge variant={loadMode === 'rpc' ? 'default' : 'secondary'}>
             {loadMode === 'rpc' ? `RPC: ${restaurantsRPC.length}` : `Direct: ${restaurantsDirect.length}`}
           </Badge>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleClearCache}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Limpiar Cache
+          </Button>
         </div>
 
         {loadMode === 'direct' && (
@@ -401,7 +422,7 @@ const Restaurantes = () => {
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>Diagnóstico del Sistema</AlertTitle>
-            <AlertDescription className="space-y-1">
+            <AlertDescription className="space-y-2">
               <div className="font-semibold">Modo actual: {loadMode === 'rpc' ? '📡 RPC' : '🔍 Direct'}</div>
               <div>✅ RPC devolvió: {restaurantsRPC.length} restaurantes</div>
               <div>✅ Direct devolvió: {restaurantsDirect.length} restaurantes</div>
@@ -410,6 +431,21 @@ const Restaurantes = () => {
                   ⚠️ DISCREPANCIA: RPC ({restaurantsRPC.length}) ≠ Direct ({restaurantsDirect.length})
                 </div>
               )}
+              
+              {/* 🆕 TABLA DE MUESTRA */}
+              {restaurantsDirect.length > 0 && (
+                <div className="mt-4 p-2 bg-muted rounded">
+                  <div className="text-xs font-mono">
+                    <div className="font-bold mb-1">Primeros 3 registros (Direct):</div>
+                    {restaurantsDirect.slice(0, 3).map((r, i) => (
+                      <div key={i}>
+                        {i + 1}. {r.codigo} - {r.nombre} (ID: {r.id.slice(0, 8)}...)
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div>✅ Franquiciados: {franchisees.length}</div>
               <div>✅ Services: {Object.keys(servicesCount).length} restaurantes con services</div>
               <div>Filtro activo: {showInactive ? 'Todos' : 'Solo activos'}</div>

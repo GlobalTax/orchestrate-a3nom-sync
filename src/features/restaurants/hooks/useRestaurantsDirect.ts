@@ -40,6 +40,22 @@ export const useRestaurantsDirect = (showInactive: boolean) => {
         query = query.eq('activo', true);
       }
 
+      // 🆕 VERIFICAR AUTENTICACIÓN
+      const { data: { user } } = await supabase.auth.getUser();
+      console.info(`[useRestaurantsDirect] 👤 Usuario autenticado:`, {
+        id: user?.id,
+        email: user?.email,
+        authenticated: !!user
+      });
+
+      if (!user) {
+        console.error(`[useRestaurantsDirect] 🚨 Usuario NO autenticado, el query podría fallar`);
+        toast.error('⚠️ Sesión expirada', {
+          description: 'Por favor, vuelve a iniciar sesión'
+        });
+        return [];
+      }
+
       const { data, error } = await query.order('nombre');
       
       if (error) {
@@ -52,6 +68,20 @@ export const useRestaurantsDirect = (showInactive: boolean) => {
 
       const fetchedCount = data?.length || 0;
       console.info(`[useRestaurantsDirect] ✅ Query devolvió: ${fetchedCount} restaurantes`);
+      
+      // 🆕 LOGS DETALLADOS
+      console.info(`[useRestaurantsDirect] 📋 Primeros 5 registros:`, data?.slice(0, 5));
+      console.info(`[useRestaurantsDirect] 🔑 IDs únicos:`, [...new Set(data?.map(r => r.id))].length);
+      console.info(`[useRestaurantsDirect] 📊 Comparación: fetchedCount=${fetchedCount}, totalDb=${totalDb}`);
+      
+      // 🆕 ALERTA SI HAY DISCREPANCIA CON EL CONTEO DE BD
+      if (fetchedCount !== totalDb) {
+        console.error(`[useRestaurantsDirect] 🚨 DISCREPANCIA: Query devolvió ${fetchedCount} pero BD tiene ${totalDb}`);
+        toast.error(`🚨 Discrepancia de datos`, {
+          description: `Query devolvió ${fetchedCount} registros pero la BD reporta ${totalDb}. Puede ser un problema de cache.`,
+          duration: 10000,
+        });
+      }
 
       toast.success(`✅ Direct: ${fetchedCount} restaurantes cargados (${showInactive ? 'todos' : 'solo activos'})`, {
         duration: 3000,
