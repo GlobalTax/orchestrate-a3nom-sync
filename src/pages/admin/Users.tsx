@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Shield, UserCog, Search } from "lucide-react";
+import { Loader2, Shield, UserCog, Search, UserPlus } from "lucide-react";
+import { InviteUserDialog } from "@/components/InviteUserDialog";
 
 interface UserWithRoles {
   id: string;
@@ -35,6 +36,7 @@ const Users = () => {
   const [newCentro, setNewCentro] = useState<string>("");
   const [newFranchiseeId, setNewFranchiseeId] = useState<string>("");
   const [franchisees, setFranchisees] = useState<Array<{ id: string; name: string }>>([]);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -209,6 +211,13 @@ const Users = () => {
 
         <div className="flex gap-2">
           <Button
+            onClick={() => setInviteDialogOpen(true)}
+            className="gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            Invitar Usuario
+          </Button>
+          <Button
             variant="outline"
             onClick={() => navigate("/admin/mapeo-empleados")}
             className="gap-2"
@@ -217,6 +226,12 @@ const Users = () => {
             Mapeo de IDs
           </Button>
         </div>
+
+        <InviteUserDialog
+          open={inviteDialogOpen}
+          onOpenChange={setInviteDialogOpen}
+          franchisees={franchisees}
+        />
 
         <Card>
           <CardHeader>
