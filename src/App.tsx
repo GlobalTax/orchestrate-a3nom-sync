@@ -27,6 +27,7 @@ import Sync from "./pages/admin/Sync";
 import Health from "./pages/admin/Health";
 import DataQuality from "./pages/DataQuality";
 import Notifications from "./pages/Notifications";
+import AcceptInvite from "./pages/AcceptInvite";
 import NotFound from "./pages/NotFound";
 import { useUserTheme } from "./hooks/useUserTheme";
 import { RestaurantProvider } from "./contexts/RestaurantContext";
@@ -48,6 +49,7 @@ const App = () => {
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/accept-invite" element={<AcceptInvite />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/employees/:id" element={<EmployeeDetail />} />

@@ -18,8 +18,10 @@ interface UserWithRoles {
   email: string;
   nombre: string;
   apellidos: string;
-  roles: ("admin" | "gestor")[];
+  roles: ("admin" | "franquiciado" | "gestor" | "asesoria")[];
   centro?: string;
+  franchisee_id?: string;
+  franchisee_name?: string;
 }
 
 const Users = () => {
@@ -29,8 +31,10 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [newRole, setNewRole] = useState<"admin" | "gestor" | "">("");
+  const [newRole, setNewRole] = useState<"admin" | "franquiciado" | "gestor" | "asesoria" | "">("");
   const [newCentro, setNewCentro] = useState<string>("");
+  const [newFranchiseeId, setNewFranchiseeId] = useState<string>("");
+  const [franchisees, setFranchisees] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -42,8 +46,23 @@ const Users = () => {
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
+      fetchFranchisees();
     }
   }, [isAdmin]);
+
+  const fetchFranchisees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("franchisees")
+        .select("id, name")
+        .order("name");
+
+      if (error) throw error;
+      setFranchisees(data || []);
+    } catch (error: any) {
+      console.error("Error al cargar franquiciados:", error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -64,16 +83,26 @@ const Users = () => {
 
       if (rolesError) throw rolesError;
 
+      // Fetch franchisees for display
+      const { data: franchiseeData } = await supabase
+        .from("franchisees")
+        .select("id, name");
+
       // Combine data
       const usersWithRoles: UserWithRoles[] = (profiles || []).map(profile => {
         const roles = userRoles?.filter(ur => ur.user_id === profile.id) || [];
+        const franchiseeRole = roles.find((r: any) => r.franchisee_id) as any;
+        const franchisee = franchiseeData?.find(f => f.id === franchiseeRole?.franchisee_id);
+        
         return {
           id: profile.id,
           email: profile.email || "",
           nombre: profile.nombre || "",
           apellidos: profile.apellidos || "",
-          roles: roles.map(r => r.role),
-          centro: roles.find(r => r.centro)?.centro,
+          roles: roles.map((r: any) => r.role),
+          centro: roles.find((r: any) => r.centro)?.centro as any,
+          franchisee_id: franchiseeRole?.franchisee_id,
+          franchisee_name: franchisee?.name,
         };
       });
 
@@ -85,14 +114,19 @@ const Users = () => {
     }
   };
 
-  const handleUpdateRole = async (userId: string, role: "admin" | "gestor", centro?: string) => {
+  const handleUpdateRole = async (
+    userId: string, 
+    role: "admin" | "franquiciado" | "gestor" | "asesoria", 
+    centro?: string,
+    franchiseeId?: string
+  ) => {
     try {
       // Check if role already exists
       const { data: existingRole } = await supabase
         .from("user_roles")
         .select("*")
         .eq("user_id", userId)
-        .eq("role", role)
+        .eq("role", role as any)
         .single();
 
       if (existingRole) {
@@ -108,12 +142,13 @@ const Users = () => {
       } else {
         // Insert new role
         const { error } = await supabase
-          .from("user_roles")
+          .from("user_roles" as any)
           .insert({
             user_id: userId,
-            role: role as "admin" | "gestor",
-            centro: role === "gestor" ? centro : null,
-          });
+            role,
+            centro: role === "asesoria" ? centro : null,
+            franchisee_id: ['franquiciado', 'gestor'].includes(role) ? franchiseeId : null,
+          } as any);
 
         if (error) throw error;
       }
@@ -123,18 +158,19 @@ const Users = () => {
       setSelectedUser(null);
       setNewRole("");
       setNewCentro("");
+      setNewFranchiseeId("");
     } catch (error: any) {
       toast.error("Error al actualizar rol: " + error.message);
     }
   };
 
-  const handleRemoveRole = async (userId: string, role: "admin" | "gestor") => {
+  const handleRemoveRole = async (userId: string, role: string) => {
     try {
       const { error } = await supabase
         .from("user_roles")
         .delete()
         .eq("user_id", userId)
-        .eq("role", role);
+        .eq("role", role as any);
 
       if (error) throw error;
 
@@ -221,7 +257,7 @@ const Users = () => {
                     <TableHead>Usuario</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Roles</TableHead>
-                    <TableHead>Centro</TableHead>
+                    <TableHead>Centro/Franquicia</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -258,37 +294,65 @@ const Users = () => {
                         </div>
                       </TableCell>
                       <TableCell>
+                        {user.franchisee_name ? (
+                          <Badge variant="outline" className="mr-1">
+                            {user.franchisee_name}
+                          </Badge>
+                        ) : null}
                         {user.centro ? (
                           <Badge variant="outline">{user.centro}</Badge>
-                        ) : (
+                        ) : user.franchisee_name ? null : (
                           <span className="text-sm text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
                         {selectedUser === user.id ? (
                           <div className="space-y-2">
-                            <Select value={newRole} onValueChange={(value) => setNewRole(value as "admin" | "gestor")}>
-                              <SelectTrigger className="w-32">
-                                <SelectValue placeholder="Rol" />
+                            <Select value={newRole} onValueChange={(value) => setNewRole(value as any)}>
+                              <SelectTrigger className="w-40">
+                                <SelectValue placeholder="Seleccionar rol" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="franquiciado">Franquiciado</SelectItem>
                                 <SelectItem value="gestor">Gestor</SelectItem>
+                                <SelectItem value="asesoria">Asesoría</SelectItem>
                               </SelectContent>
                             </Select>
-                            {newRole === "gestor" && (
+                            
+                            {(newRole === "franquiciado" || newRole === "gestor") && (
+                              <Select value={newFranchiseeId} onValueChange={setNewFranchiseeId}>
+                                <SelectTrigger className="w-40">
+                                  <SelectValue placeholder="Franquicia" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {franchisees.map((f) => (
+                                    <SelectItem key={f.id} value={f.id}>
+                                      {f.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                            
+                            {newRole === "asesoria" && (
                               <Input
-                                placeholder="Centro"
+                                placeholder="Centro (ej: REST001)"
                                 value={newCentro}
                                 onChange={(e) => setNewCentro(e.target.value)}
-                                className="w-32"
+                                className="w-40"
                               />
                             )}
+                            
                             <div className="flex gap-1">
                               <Button
                                 size="sm"
-                                onClick={() => newRole && handleUpdateRole(user.id, newRole, newCentro)}
-                                disabled={!newRole}
+                                onClick={() => newRole && handleUpdateRole(user.id, newRole, newCentro, newFranchiseeId)}
+                                disabled={
+                                  !newRole || 
+                                  (newRole === "asesoria" && !newCentro) ||
+                                  ((newRole === "franquiciado" || newRole === "gestor") && !newFranchiseeId)
+                                }
                               >
                                 Guardar
                               </Button>
@@ -299,6 +363,7 @@ const Users = () => {
                                   setSelectedUser(null);
                                   setNewRole("");
                                   setNewCentro("");
+                                  setNewFranchiseeId("");
                                 }}
                               >
                                 Cancelar

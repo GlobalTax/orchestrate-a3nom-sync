@@ -1,5 +1,8 @@
 project_id = "srwnjnrhxzcpftmbbyib"
 
+[functions.send_invite]
+# Requires authentication - admin only
+
 [functions.orquest_proxy]
 verify_jwt = false
 

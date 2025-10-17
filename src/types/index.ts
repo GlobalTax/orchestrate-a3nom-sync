@@ -62,7 +62,17 @@ export interface FormState {
 }
 
 // User role type (must match database enum)
-export type UserRole = "admin" | "gestor" | "viewer";
+export type UserRole = "admin" | "franquiciado" | "gestor" | "asesoria";
+
+// User role with additional details
+export interface UserRoleWithDetails {
+  id: string;
+  user_id: string;
+  role: UserRole;
+  centro?: string;
+  franchisee_id?: string;
+  created_at: string;
+}
 
 // Data quality severity (must match database enum)
 export type DQSeverity = "critica" | "alta" | "media" | "baja";
