@@ -503,6 +503,53 @@ export type Database = {
         }
         Relationships: []
       }
+      invites: {
+        Row: {
+          accepted_at: string | null
+          centro: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          franchisee_id: string | null
+          id: string
+          invited_by: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          centro?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          franchisee_id?: string | null
+          id?: string
+          invited_by?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          centro?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          franchisee_id?: string | null
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_franchisee_id_fkey"
+            columns: ["franchisee_id"]
+            isOneToOne: false
+            referencedRelation: "franchisees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_settings: {
         Row: {
           created_at: string
@@ -928,6 +975,7 @@ export type Database = {
         Row: {
           centro: string | null
           created_at: string | null
+          franchisee_id: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
@@ -935,6 +983,7 @@ export type Database = {
         Insert: {
           centro?: string | null
           created_at?: string | null
+          franchisee_id?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
@@ -942,11 +991,20 @@ export type Database = {
         Update: {
           centro?: string | null
           created_at?: string | null
+          franchisee_id?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_franchisee_id_fkey"
+            columns: ["franchisee_id"]
+            isOneToOne: false
+            referencedRelation: "franchisees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1086,7 +1144,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "gestor"
+      app_role: "admin" | "gestor" | "franquiciado" | "asesoria"
       audit_action: "INSERT" | "UPDATE" | "DELETE"
       dq_severity: "critica" | "alta" | "media" | "baja"
     }
@@ -1216,7 +1274,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "gestor"],
+      app_role: ["admin", "gestor", "franquiciado", "asesoria"],
       audit_action: ["INSERT", "UPDATE", "DELETE"],
       dq_severity: ["critica", "alta", "media", "baja"],
     },
