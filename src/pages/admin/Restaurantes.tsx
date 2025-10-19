@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useRestaurant } from "@/contexts/RestaurantContext";
+import { useTableState, useDebounce } from "@/hooks";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Building2, Plus, Info, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Building2, Plus, Info, RefreshCw, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -133,6 +135,21 @@ const Restaurantes = () => {
   const restaurants = loadMode === 'rpc' ? restaurantsRPC : restaurantsDirect;
   const loadingRestaurants = loadMode === 'rpc' ? loadingRPC : loadingDirect;
   const restaurantsError = loadMode === 'rpc' ? errorRPC : errorDirect;
+
+  // Table state with search functionality
+  const {
+    paginatedData: filteredRestaurants,
+    searchQuery,
+    setSearchQuery,
+    totalItems,
+  } = useTableState({
+    data: restaurants,
+    initialPageSize: 1000, // Show all results on one page
+    searchFields: ['codigo', 'nombre', 'ciudad', 'franchisee_name', 'franchisee_email'],
+  });
+
+  // Debounce search for better performance
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   const {
     franchisees,
@@ -486,6 +503,33 @@ const Restaurantes = () => {
           </TabsList>
 
           <TabsContent value="general" className="space-y-6">
+            {/* Search bar */}
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por código, nombre, ciudad, franquiciado..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              {searchQuery && (
+                <Badge variant="secondary" className="whitespace-nowrap">
+                  {totalItems} de {restaurants.length} restaurantes
+                </Badge>
+              )}
+            </div>
             <div className="flex justify-end">
               <Button 
                 onClick={() => setRestaurantDialogOpen(true)}
@@ -497,7 +541,7 @@ const Restaurantes = () => {
             </div>
 
             <RestaurantsList
-              restaurants={restaurants}
+              restaurants={filteredRestaurants}
               servicesCount={servicesCount}
               isLoading={loadingRestaurants}
               testingCentre={testingCentre}

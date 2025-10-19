@@ -31,7 +31,7 @@ export const RestaurantsList = ({
       <CardHeader>
         <CardTitle>Restaurantes Registrados</CardTitle>
         <CardDescription>
-          {restaurants.length} restaurante{restaurants.length !== 1 ? "s" : ""} en el sistema
+          {restaurants.length} restaurante{restaurants.length !== 1 ? "s" : ""}
         </CardDescription>
       </CardHeader>
       <CardContent>
