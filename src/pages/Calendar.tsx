@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCentro } from "@/contexts/CentroContext";
 import { useEmployees, useSchedules, useScheduleMutations, useAbsences, useAbsenceMutations } from "@/hooks";
-import Layout from "@/components/Layout";
 import { PageHeader, LoadingSpinner, ConfirmDialog } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -284,8 +283,7 @@ const Calendar = () => {
   };
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <PageHeader
             title="Calendario de Planificación"
@@ -680,7 +678,6 @@ const Calendar = () => {
           variant="destructive"
         />
       </div>
-    </Layout>
   );
 };
 

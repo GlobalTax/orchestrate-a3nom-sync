@@ -32,6 +32,7 @@ import AcceptInvite from "./pages/AcceptInvite";
 import NotFound from "./pages/NotFound";
 import { useUserTheme } from "./hooks/useUserTheme";
 import { RestaurantProvider } from "./contexts/RestaurantContext";
+import Layout from "./components/Layout";
 
 const queryClient = new QueryClient();
 
@@ -51,33 +52,33 @@ const App = () => {
             <Route path="/auth" element={<Auth />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/employees" element={<Employees />} />
-            <Route path="/employees/:id" element={<EmployeeDetail />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/costs" element={<Costs />} />
-            <Route path="/calidad-datos" element={<DataQuality />} />
-            <Route path="/admin/users" element={<Users />} />
-            <Route path="/admin/mapeo-empleados" element={<EmployeeMapping />} />
-            <Route path="/admin/importar-nominas" element={<PayrollImport />} />
-            <Route path="/admin/auditoria" element={<Audit />} />
-            <Route path="/admin/alertas" element={<Alerts />} />
-            <Route path="/admin/import-restaurants" element={<RestaurantImport />} />
-            <Route path="/admin/restaurant-auto-import" element={<RestaurantAutoImport />} />
             
-            {/* Nueva página unificada de restaurantes */}
-            <Route path="/admin/restaurantes" element={<Restaurantes />} />
+            {/* Protected routes with persistent Layout */}
+            <Route element={<Layout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/employees" element={<Employees />} />
+              <Route path="/employees/:id" element={<EmployeeDetail />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/costs" element={<Costs />} />
+              <Route path="/calidad-datos" element={<DataQuality />} />
+              <Route path="/admin/users" element={<Users />} />
+              <Route path="/admin/mapeo-empleados" element={<EmployeeMapping />} />
+              <Route path="/admin/importar-nominas" element={<PayrollImport />} />
+              <Route path="/admin/auditoria" element={<Audit />} />
+              <Route path="/admin/alertas" element={<Alerts />} />
+              <Route path="/admin/import-restaurants" element={<RestaurantImport />} />
+              <Route path="/admin/restaurant-auto-import" element={<RestaurantAutoImport />} />
+              <Route path="/admin/restaurantes" element={<Restaurantes />} />
+              <Route path="/admin/centres" element={<Centres />} />
+              <Route path="/admin/centros" element={<Centres />} />
+              <Route path="/admin/centros-coste" element={<CostCentres />} />
+              <Route path="/admin/services" element={<Services />} />
+              <Route path="/admin/ajustes" element={<Settings />} />
+              <Route path="/admin/sincronizar" element={<Sync />} />
+              <Route path="/admin/health" element={<Health />} />
+              <Route path="/notificaciones" element={<Notifications />} />
+            </Route>
             
-            {/* Rutas legacy - redirigen a la nueva página unificada */}
-            <Route path="/admin/centres" element={<Centres />} />
-            <Route path="/admin/centros" element={<Centres />} />
-            <Route path="/admin/centros-coste" element={<CostCentres />} />
-            <Route path="/admin/services" element={<Services />} />
-            
-            <Route path="/admin/ajustes" element={<Settings />} />
-            <Route path="/admin/sincronizar" element={<Sync />} />
-            <Route path="/admin/health" element={<Health />} />
-            <Route path="/notificaciones" element={<Notifications />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,5 +1,5 @@
-import { ReactNode, useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -38,11 +38,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import NotificationBell from "@/components/NotificationBell";
 import { RestaurantSelector } from "@/components/RestaurantSelector";
 
-interface LayoutProps {
-  children: ReactNode;
-}
-
-const Layout = ({ children }: LayoutProps) => {
+const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
@@ -304,7 +300,7 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
           </header>
           <main className="flex-1 overflow-auto">
-            {children}
+            <Outlet />
           </main>
         </div>
       </div>

@@ -4,7 +4,6 @@ import { useCentro } from "@/contexts/CentroContext";
 import { useDataQualityIssues, useDataQualityMutations, DQIssue } from "@/hooks/useDataQuality";
 import { ExportUtils } from "@/lib/exporters";
 import { Formatters } from "@/lib/formatters";
-import Layout from "@/components/Layout";
 import { PageHeader, LoadingSpinner, EmptyState } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,27 +104,22 @@ export default function DataQuality() {
 
   if (roleLoading) {
     return (
-      <Layout>
-        <LoadingSpinner size="lg" />
-      </Layout>
+      <LoadingSpinner size="lg" />
     );
   }
 
   if (!isAdmin && !isGestor) {
     return (
-      <Layout>
-        <div className="text-center py-12">
-          <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
-          <h2 className="text-2xl font-bold">Acceso Denegado</h2>
-          <p className="text-muted-foreground">No tienes permisos para ver esta página</p>
-        </div>
-      </Layout>
+      <div className="text-center py-12">
+        <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
+        <h2 className="text-2xl font-bold">Acceso Denegado</h2>
+        <p className="text-muted-foreground">No tienes permisos para ver esta página</p>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <PageHeader
           title="Calidad de Datos"
           description="Monitorización de incidencias y anomalías en datos"
@@ -362,6 +356,5 @@ export default function DataQuality() {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>
   );
 }

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useFileImport, useColumnMapping } from "@/features/imports";
 import { FileUploadZone, ColumnMapper, ImportProgress } from "@/features/imports";
-import Layout from "@/components/Layout";
+
 import { PageHeader } from "@/components/common";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

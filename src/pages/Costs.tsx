@@ -6,7 +6,6 @@ import { useCostAnalysis } from "@/hooks/useCostAnalysis";
 import { ExportUtils } from "@/lib/exporters";
 import { CostCalculations } from "@/lib/calculations/costCalculations";
 import { Formatters } from "@/lib/formatters";
-import Layout from "@/components/Layout";
 import { PageHeader, LoadingSpinner, EmptyState } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,8 +49,7 @@ const Costs = () => {
   };
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <PageHeader
             title="Análisis de Costes"
@@ -354,8 +352,7 @@ const Costs = () => {
             </div>
           </>
         )}
-      </div>
-    </Layout>
+    </div>
   );
 };
 

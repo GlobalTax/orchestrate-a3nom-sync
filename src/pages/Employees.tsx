@@ -6,7 +6,6 @@ import { useEmployeeCentros } from "@/hooks/useEmployeeCentros";
 import { useTableState } from "@/hooks/useTableState";
 import { ExportUtils } from "@/lib/exporters";
 import { Formatters } from "@/lib/formatters";
-import Layout from "@/components/Layout";
 import { PageHeader, LoadingSpinner, EmptyState } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -63,8 +62,7 @@ const Employees = () => {
   };
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <PageHeader
           title="Empleados"
           description="Gestiona tu equipo de trabajo"
@@ -168,7 +166,6 @@ const Employees = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
   );
 };
 

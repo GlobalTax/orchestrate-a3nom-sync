@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import Layout from "@/components/Layout";
 import { toast } from "sonner";
 
 interface HealthLog {
@@ -98,8 +97,7 @@ export default function Health() {
   };
 
   return (
-    <Layout>
-      <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Activity className="h-8 w-8 text-primary" />
@@ -251,6 +249,5 @@ export default function Health() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
   );
 }

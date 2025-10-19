@@ -3,7 +3,6 @@ import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { useEmployeeCentros } from "@/hooks/useEmployeeCentros";
 import { CostCalculations } from "@/lib/calculations/costCalculations";
 import { Formatters } from "@/lib/formatters";
-import Layout from "@/components/Layout";
 import { PageHeader, LoadingSpinner, EmptyState } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -67,8 +66,7 @@ const Dashboard = () => {
   ];
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <PageHeader
             title="Dashboard de Métricas"
@@ -285,8 +283,7 @@ const Dashboard = () => {
             )}
           </>
         )}
-      </div>
-    </Layout>
+    </div>
   );
 };
 

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
-import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -174,36 +173,31 @@ const EmployeeDetail = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!employee) {
     return (
-      <Layout>
-        <div className="p-6">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">Empleado no encontrado</p>
-              <div className="flex justify-center mt-4">
-                <Button onClick={() => navigate("/employees")}>
-                  Volver al listado
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
+      <div className="p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">Empleado no encontrado</p>
+            <div className="flex justify-center mt-4">
+              <Button onClick={() => navigate("/employees")}>
+                Volver al listado
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
             <Button
@@ -445,7 +439,6 @@ const EmployeeDetail = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
   );
 };
 
