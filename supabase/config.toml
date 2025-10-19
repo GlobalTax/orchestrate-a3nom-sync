@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.check_system_health]
 verify_jwt = false
+
+[functions.import_restaurants_csv]
+verify_jwt = false
