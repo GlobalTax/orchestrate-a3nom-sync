@@ -166,10 +166,11 @@ Deno.serve(async (req) => {
         }
       } catch (err) {
         console.error(`❌ Error processing restaurant ${row.name}:`, err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
         errors++;
         errorDetails.push({
           restaurant: row.name,
-          error: err.message,
+          error: errorMessage,
         });
       }
     }
@@ -192,10 +193,11 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('❌ Import failed:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: errorMessage,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
