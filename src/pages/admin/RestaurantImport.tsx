@@ -334,21 +334,17 @@ export default function RestaurantImport() {
 
   if (roleLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-96">
-          <p>Cargando...</p>
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-96">
+        <p>Cargando...</p>
+      </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-96">
-          <p className="text-destructive">Acceso denegado. Solo administradores.</p>
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-96">
+        <p className="text-destructive">Acceso denegado. Solo administradores.</p>
+      </div>
     );
   }
 
@@ -356,8 +352,7 @@ export default function RestaurantImport() {
   const minorErrors = validationErrors.filter(e => !e.isCritical);
 
   return (
-    <Layout>
-      <div className="container mx-auto py-8">
+    <div className="container mx-auto py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Importar Restaurantes</h1>
           <p className="text-muted-foreground">
@@ -596,6 +591,5 @@ export default function RestaurantImport() {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
   );
 }

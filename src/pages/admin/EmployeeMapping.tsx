@@ -334,17 +334,14 @@ const EmployeeMapping = () => {
 
   if (roleLoading || !isAdmin) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -596,7 +593,6 @@ const EmployeeMapping = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
   );
 };
 

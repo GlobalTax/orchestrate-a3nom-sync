@@ -148,11 +148,9 @@ export default function Sync() {
 
   if (roleLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-full">
-          <RefreshCw className="animate-spin h-8 w-8" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-full">
+        <RefreshCw className="animate-spin h-8 w-8" />
+      </div>
     );
   }
 
@@ -167,8 +165,7 @@ export default function Sync() {
   const totalProcessed = logs?.reduce((acc, log) => acc + (log.total_rows || 0), 0) || 0;
 
   return (
-    <Layout>
-      <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center gap-3 mb-6">
           <RefreshCw className="h-8 w-8" />
           <div>
@@ -430,6 +427,5 @@ export default function Sync() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
   );
 }

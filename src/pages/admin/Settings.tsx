@@ -187,8 +187,7 @@ export default function Settings() {
   };
 
   return (
-    <Layout>
-      <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center gap-3 mb-6">
           <Settings2 className="h-8 w-8" />
           <div>
@@ -491,6 +490,5 @@ export default function Settings() {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
   );
 }

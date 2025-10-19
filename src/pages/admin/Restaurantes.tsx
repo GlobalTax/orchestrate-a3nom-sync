@@ -325,32 +325,27 @@ const Restaurantes = () => {
 
   if (roleLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-full">
-          <Alert variant="destructive">
-            <AlertTitle>Acceso Denegado</AlertTitle>
-            <AlertDescription>
-              No tienes permisos para acceder a esta página
-            </AlertDescription>
-          </Alert>
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-full">
+        <Alert variant="destructive">
+          <AlertTitle>Acceso Denegado</AlertTitle>
+          <AlertDescription>
+            No tienes permisos para acceder a esta página
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -582,7 +577,6 @@ const Restaurantes = () => {
           onAssign={handleGestorAssignment}
         />
       </div>
-    </Layout>
   );
 };
 

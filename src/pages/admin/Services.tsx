@@ -213,22 +213,19 @@ const Services = () => {
 
   if (!isAdmin) {
     return (
-      <Layout>
-        <div className="p-6">
-          <Alert variant="destructive">
-            <AlertTitle>Acceso denegado</AlertTitle>
-            <AlertDescription>
-              No tienes permisos para acceder a esta página.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </Layout>
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertTitle>Acceso denegado</AlertTitle>
+          <AlertDescription>
+            No tienes permisos para acceder a esta página.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -434,7 +431,6 @@ const Services = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>
   );
 };
 

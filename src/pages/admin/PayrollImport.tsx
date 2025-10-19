@@ -314,17 +314,14 @@ const PayrollImport = () => {
 
   if (roleLoading || !isAdmin) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <PageHeader
           title="Importar Nóminas"
           description="Carga archivos XLS/XLSX/CSV con datos de nóminas"
@@ -482,7 +479,6 @@ const PayrollImport = () => {
           </>
         )}
       </div>
-    </Layout>
   );
 };
 

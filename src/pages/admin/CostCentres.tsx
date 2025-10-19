@@ -168,35 +168,30 @@ const CostCentres = () => {
 
   if (roleLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Acceso Denegado</h2>
-            <p className="text-muted-foreground mb-4">
-              No tienes permisos para acceder a esta página
-            </p>
-            <Button onClick={() => navigate("/dashboard")}>
-              Volver al Dashboard
-            </Button>
-          </div>
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Acceso Denegado</h2>
+          <p className="text-muted-foreground mb-4">
+            No tienes permisos para acceder a esta página
+          </p>
+          <Button onClick={() => navigate("/dashboard")}>
+            Volver al Dashboard
+          </Button>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6 animate-fade-in">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/admin/centros")}>
             <ArrowLeft className="h-4 w-4" />
@@ -388,7 +383,6 @@ const CostCentres = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>
   );
 };
 

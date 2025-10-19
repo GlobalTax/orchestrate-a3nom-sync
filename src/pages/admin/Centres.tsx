@@ -218,29 +218,24 @@ const Centres = () => {
 
   if (roleLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <Layout>
-        <div className="text-center py-12">
-          <Building2 className="h-12 w-12 mx-auto text-destructive mb-4" />
-          <h2 className="text-2xl font-bold">Acceso Denegado</h2>
-          <p className="text-muted-foreground">Solo administradores pueden gestionar centros</p>
-        </div>
-      </Layout>
+      <div className="text-center py-12">
+        <Building2 className="h-12 w-12 mx-auto text-destructive mb-4" />
+        <h2 className="text-2xl font-bold">Acceso Denegado</h2>
+        <p className="text-muted-foreground">Solo administradores pueden gestionar centros</p>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
         <div className="flex justify-between items-center">
           <div>
         <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -516,7 +511,6 @@ const Centres = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>
   );
 };
 
