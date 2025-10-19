@@ -164,42 +164,26 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // PASO 5: DIAGNÓSTICO Y TOASTS
+      // PASO 5: DIAGNÓSTICO (solo logs, toasts solo para errores críticos)
       const finalCount = allRestaurants.length;
       const filterStatus = showInactive ? 'todos (activos + inactivos)' : 'solo activos';
 
       if (isAdmin) {
-        // ADMIN: Comparar con total en BD
         console.log(`[RestaurantContext] ✅ Admin ve ${finalCount} de ${totalDb} restaurantes (${filterStatus})`);
         
+        // Solo mostrar toast si hay error crítico
         if (finalCount === 0 && totalDb && totalDb > 0) {
-          toast.error('🚨 Error crítico de permisos (Admin)', {
-            description: `Hay ${totalDb} restaurantes en la BD pero no son accesibles. Revisa las políticas RLS.`,
-            duration: 15000,
-          });
-        } else if (finalCount !== totalDb) {
-          toast.warning('⚠️ Discrepancia en datos (Admin)', {
-            description: `Se cargaron ${finalCount} restaurantes pero hay ${totalDb} en la BD (${filterStatus}).`,
-            duration: 8000,
-          });
-        } else {
-          toast.success(`✅ Admin: ${finalCount} restaurantes cargados (${filterStatus})`, {
-            duration: 3000,
+          toast.error('Error de permisos', {
+            description: `No se pueden cargar los ${totalDb} restaurantes disponibles`,
           });
         }
       } else {
-        // GESTOR: Mostrar filtrado
         console.log(`[RestaurantContext] ✅ Gestor ve ${finalCount} restaurantes (${filterStatus}, filtrado por ${centros.length} centros)`);
         
-        if (finalCount === 0) {
-          toast.warning('⚠️ No tienes acceso a restaurantes', {
-            description: `Filtrados por: ${centros.slice(0, 3).join(', ')}${centros.length > 3 ? '...' : ''}`,
-            duration: 10000,
-          });
-        } else {
-          toast.success(`✅ Gestor: ${finalCount} restaurantes accesibles (${filterStatus})`, {
-            description: `Filtrados por: ${centros.slice(0, 3).join(', ')}${centros.length > 3 ? '...' : ''}`,
-            duration: 5000,
+        // Solo mostrar toast si no tiene acceso a nada
+        if (finalCount === 0 && centros.length > 0) {
+          toast.warning('Sin acceso', {
+            description: 'No tienes restaurantes asignados',
           });
         }
       }

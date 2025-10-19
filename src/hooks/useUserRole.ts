@@ -1,81 +1,91 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "admin" | "franquiciado" | "gestor" | "asesoria";
 
+interface UserRoleData {
+  roles: AppRole[];
+  centros: string[];
+  franchiseeId: string | null;
+  userId: string | null;
+}
+
 export const useUserRole = () => {
-  const [roles, setRoles] = useState<AppRole[]>([]);
-  const [centros, setCentros] = useState<string[]>([]);
-  const [franchiseeId, setFranchiseeId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [authTrigger, setAuthTrigger] = useState(0);
 
+  // Listen to auth changes
   useEffect(() => {
-    const fetchUserRoles = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          setRoles([]);
-          setUserId(null);
-          setLoading(false);
-          return;
-        }
-
-        setUserId(user.id);
-
-        // Fetch user roles with franchisee_id
-        const { data: userRoles, error } = await supabase
-          .from("user_roles")
-          .select("role, centro, franchisee_id") as any;
-
-        if (error) throw error;
-
-        const uniqueRoles = [...new Set(userRoles?.map((r: any) => r.role as AppRole) || [])] as AppRole[];
-        setRoles(uniqueRoles);
-
-        // Extract franchisee_id if exists
-        const franchiseeRole = userRoles?.find((r: any) => r.franchisee_id);
-        if (franchiseeRole) {
-          setFranchiseeId(franchiseeRole.franchisee_id);
-        }
-
-        // Fetch accessible centros from view
-        const { data: userCentres } = await supabase
-          .from("v_user_centres")
-          .select("centro_code")
-          .eq("user_id", user.id);
-
-        const accessibleCentros = userCentres?.map(c => c.centro_code) || [];
-        setCentros(accessibleCentros);
-
-        console.log('[useUserRole] 🔐 User roles loaded:', {
-          userId: user.id,
-          email: user.email,
-          roles: uniqueRoles,
-          centros: accessibleCentros,
-          franchiseeId,
-          isAdmin: uniqueRoles.includes('admin'),
-          isFranquiciado: uniqueRoles.includes('franquiciado'),
-          isGestor: uniqueRoles.includes('gestor'),
-          isAsesoria: uniqueRoles.includes('asesoria'),
-        });
-      } catch (error) {
-        console.error("Error fetching user roles:", error);
-        setRoles([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserRoles();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchUserRoles();
+      setAuthTrigger(prev => prev + 1);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const { data, isLoading: loading } = useQuery<UserRoleData>({
+    queryKey: ['user_role', authTrigger],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return {
+          roles: [],
+          centros: [],
+          franchiseeId: null,
+          userId: null,
+        };
+      }
+
+      // Fetch user roles with franchisee_id
+      const { data: userRoles, error } = await supabase
+        .from("user_roles")
+        .select("role, centro, franchisee_id") as any;
+
+      if (error) throw error;
+
+      const uniqueRoles = [...new Set(userRoles?.map((r: any) => r.role as AppRole) || [])] as AppRole[];
+
+      // Extract franchisee_id if exists
+      const franchiseeRole = userRoles?.find((r: any) => r.franchisee_id);
+      const franchiseeId = franchiseeRole?.franchisee_id || null;
+
+      // Fetch accessible centros from view
+      const { data: userCentres } = await supabase
+        .from("v_user_centres")
+        .select("centro_code")
+        .eq("user_id", user.id);
+
+      const accessibleCentros = userCentres?.map(c => c.centro_code) || [];
+
+      console.log('[useUserRole] 🔐 User roles loaded:', {
+        userId: user.id,
+        email: user.email,
+        roles: uniqueRoles,
+        centros: accessibleCentros,
+        franchiseeId,
+        isAdmin: uniqueRoles.includes('admin'),
+        isFranquiciado: uniqueRoles.includes('franquiciado'),
+        isGestor: uniqueRoles.includes('gestor'),
+        isAsesoria: uniqueRoles.includes('asesoria'),
+      });
+
+      return {
+        roles: uniqueRoles,
+        centros: accessibleCentros,
+        franchiseeId,
+        userId: user.id,
+      };
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000, // 10 minutos (antes cacheTime)
+    retry: 1,
+  });
+
+  const roles = data?.roles || [];
+  const centros = data?.centros || [];
+  const franchiseeId = data?.franchiseeId || null;
+  const userId = data?.userId || null;
 
   const hasRole = (role: AppRole) => roles.includes(role);
   const isAdmin = hasRole("admin");

@@ -3,6 +3,7 @@ import { useRestaurant } from "@/contexts/RestaurantContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { memo } from "react";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const RestaurantSelector = () => {
+export const RestaurantSelector = memo(() => {
   const { selectedRestaurant, setSelectedRestaurant, restaurants, isLoading: contextLoading } = useRestaurant();
   const { isAdmin } = useUserRole();
 
@@ -141,4 +142,4 @@ export const RestaurantSelector = () => {
       )}
     </div>
   );
-};
+});
