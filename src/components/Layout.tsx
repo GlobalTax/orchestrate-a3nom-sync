@@ -93,9 +93,9 @@ const Layout = ({ children }: LayoutProps) => {
   if (!session) return null;
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider open={true}>
       <div className="min-h-screen flex w-full">
-        <Sidebar collapsible={isMobile ? "offcanvas" : "icon"} className="w-60 border-r border-sidebar-border/50">
+        <Sidebar collapsible="none" className="w-60 border-r border-sidebar-border/50">
           <div className="p-4 border-b border-sidebar-border/50">
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-sidebar-primary/10 rounded-md">
@@ -295,7 +295,6 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="flex-1 flex flex-col">
           <header className="h-12 border-b border-border/50 bg-background px-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <SidebarTrigger className="h-6 w-6" />
               <h2 className="text-sm font-medium text-foreground">Gestión Integrada</h2>
             </div>
             
