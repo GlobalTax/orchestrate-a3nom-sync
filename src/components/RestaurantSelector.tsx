@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export const RestaurantSelector = memo(() => {
   const { selectedRestaurant, setSelectedRestaurant, restaurants, isLoading: contextLoading } = useRestaurant();
@@ -44,9 +44,6 @@ export const RestaurantSelector = memo(() => {
     enabled: !!selectedRestaurant?.codigo,
   });
 
-  if (contextLoading) {
-    return <Skeleton className="h-16 w-[320px]" />;
-  }
 
   const handleValueChange = (value: string) => {
     if (value === "all") {
@@ -60,7 +57,7 @@ export const RestaurantSelector = memo(() => {
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className={cn("flex items-center gap-3 transition-opacity", contextLoading && "opacity-50")}>
       <Select
         value={selectedRestaurant?.id || "all"}
         onValueChange={handleValueChange}
