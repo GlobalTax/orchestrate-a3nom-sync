@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getServicesHybrid } from "@/services/orquest";
 import type { RestaurantFormData, Franchisee } from "../../types";
 
 interface RestaurantDialogProps {
@@ -27,6 +29,29 @@ export const RestaurantDialog = ({
   isSaving,
   onSubmit,
 }: RestaurantDialogProps) => {
+  const [orquestServices, setOrquestServices] = useState<Array<{ id: string; nombre?: string; name?: string }>>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+
+  // Cargar services cuando cambia el franchisee
+  useEffect(() => {
+    if (formData.franchisee_id && open) {
+      setLoadingServices(true);
+      getServicesHybrid(formData.franchisee_id)
+        .then((services) => {
+          setOrquestServices(services as Array<{ id: string; nombre?: string; name?: string }> || []);
+        })
+        .catch((err) => {
+          console.error("Error cargando services:", err);
+          setOrquestServices([]);
+        })
+        .finally(() => {
+          setLoadingServices(false);
+        });
+    } else {
+      setOrquestServices([]);
+    }
+  }, [formData.franchisee_id, open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -202,14 +227,40 @@ export const RestaurantDialog = ({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="orquest_service_id">Service ID</Label>
-                <Input
-                  id="orquest_service_id"
-                  value={formData.orquest_service_id}
-                  onChange={(e) =>
-                    onFormDataChange({ ...formData, orquest_service_id: e.target.value })
-                  }
-                  placeholder="Ej: S001"
-                />
+                {!formData.franchisee_id ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 bg-muted rounded">
+                    <Info className="h-4 w-4" />
+                    Selecciona un franquiciado primero
+                  </div>
+                ) : loadingServices ? (
+                  <div className="flex items-center gap-2 p-2 bg-muted rounded">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Cargando services...</span>
+                  </div>
+                ) : orquestServices.length === 0 ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 bg-muted rounded">
+                    <Info className="h-4 w-4" />
+                    No hay services disponibles para este franquiciado
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.orquest_service_id}
+                    onValueChange={(val) =>
+                      onFormDataChange({ ...formData, orquest_service_id: val })
+                    }
+                  >
+                    <SelectTrigger id="orquest_service_id">
+                      <SelectValue placeholder="Seleccionar Service de Orquest" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orquestServices.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          ✅ {s.id} - {s.nombre || s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
             <p className="text-xs text-muted-foreground">

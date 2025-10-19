@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Building2, Plus, Info, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Custom hooks
 import { useRestaurants } from "@/features/restaurants/hooks/useRestaurants";
@@ -56,6 +57,7 @@ const Restaurantes = () => {
   const [activeTab, setActiveTab] = useState("general");
   const [loadMode, setLoadMode] = useState<'rpc' | 'direct'>('rpc');
   const [testingCentre, setTestingCentre] = useState<string | null>(null);
+  const [isSyncingOrquest, setIsSyncingOrquest] = useState(false);
   
   // Restaurant dialog state
   const [restaurantDialogOpen, setRestaurantDialogOpen] = useState(false);
@@ -323,6 +325,31 @@ const Restaurantes = () => {
     });
   };
 
+  // Sync Orquest services handler
+  const handleSyncOrquestServices = async () => {
+    setIsSyncingOrquest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync_orquest_services');
+      
+      if (error) throw error;
+
+      toast.success(`✅ Services sincronizados correctamente`, {
+        description: `${data?.updated_services || 0} services actualizados de ${data?.franchisees_processed || 0} franquiciado(s)`
+      });
+
+      // Refrescar caché de services
+      queryClient.invalidateQueries({ queryKey: ['restaurant_services'] });
+      queryClient.invalidateQueries({ queryKey: ['orquest_services'] });
+    } catch (err: any) {
+      console.error('Error sincronizando services:', err);
+      toast.error('Error al sincronizar services', {
+        description: err.message || 'Verifica la conexión con Orquest'
+      });
+    } finally {
+      setIsSyncingOrquest(false);
+    }
+  };
+
   if (roleLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -511,6 +538,8 @@ const Restaurantes = () => {
               onEdit={handleEditService}
               onToggleActive={toggleServiceActive}
               onNew={() => setServiceDialogOpen(true)}
+              onSyncOrquest={handleSyncOrquestServices}
+              isSyncing={isSyncingOrquest}
             />
           </TabsContent>
 

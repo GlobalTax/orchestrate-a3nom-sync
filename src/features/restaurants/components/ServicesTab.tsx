@@ -12,6 +12,8 @@ interface ServicesTabProps {
   onEdit: (service: RestaurantService) => void;
   onToggleActive: (params: { id: string; activo: boolean }) => void;
   onNew: () => void;
+  onSyncOrquest?: () => void;
+  isSyncing?: boolean;
 }
 
 export const ServicesTab = ({
@@ -20,6 +22,8 @@ export const ServicesTab = ({
   onEdit,
   onToggleActive,
   onNew,
+  onSyncOrquest,
+  isSyncing = false,
 }: ServicesTabProps) => {
   return (
     <div className="space-y-6">
@@ -33,10 +37,27 @@ export const ServicesTab = ({
             múltiples services para organizar mejor la planificación.
           </AlertDescription>
         </Alert>
-        <Button onClick={onNew}>
-          <Plus className="mr-2 h-4 w-4" />
-          Añadir Service
-        </Button>
+        <div className="flex gap-2">
+          {onSyncOrquest && (
+            <Button onClick={onSyncOrquest} disabled={isSyncing} variant="outline">
+              {isSyncing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sincronizando...
+                </>
+              ) : (
+                <>
+                  <Server className="mr-2 h-4 w-4" />
+                  Sincronizar desde Orquest
+                </>
+              )}
+            </Button>
+          )}
+          <Button onClick={onNew}>
+            <Plus className="mr-2 h-4 w-4" />
+            Añadir Service
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
