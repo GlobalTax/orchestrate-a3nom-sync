@@ -26,7 +26,10 @@ Deno.serve(async (req) => {
 
     const orquestBaseUrl = Deno.env.get('ORQUEST_BASE_URL')
     if (!orquestBaseUrl) {
-      throw new Error('ORQUEST_BASE_URL debe estar configurado')
+      throw new Error(
+        '❌ ORQUEST_BASE_URL no configurado. ' +
+        'Configúralo en: Supabase Dashboard > Edge Functions > Secrets'
+      )
     }
 
     const supabaseClient = createClient(
@@ -43,10 +46,11 @@ Deno.serve(async (req) => {
     if (franchiseesError) throw franchiseesError
 
     if (!franchisees || franchisees.length === 0) {
-      console.warn('⚠️ No hay franquiciados con API Key configurada')
-      
-      // Fallback: Intentar sincronizar con Cookie global
-      return await syncWithGlobalAuth(supabaseClient, orquestBaseUrl)
+      console.error('❌ No hay franquiciados con API Key configurada')
+      throw new Error(
+        'No se pueden sincronizar servicios: No hay franquiciados con orquest_api_key configurada. ' +
+        'Por favor, configura al menos un franquiciado con su API Key en la sección de Franquiciados.'
+      )
     }
 
     console.log(`📋 Sincronizando servicios para ${franchisees.length} franquiciados...`)
@@ -150,52 +154,3 @@ Deno.serve(async (req) => {
   }
 })
 
-// Función auxiliar para fallback con Cookie global
-async function syncWithGlobalAuth(supabaseClient: any, baseUrl: string) {
-  console.log('⚠️ Usando autenticación global (Cookie) como fallback...')
-  
-  const orquestCookie = Deno.env.get('ORQUEST_COOKIE_JSESSIONID')
-  if (!orquestCookie) {
-    throw new Error('No hay ni API Keys de franquiciados ni Cookie global configurada')
-  }
-
-  const servicesUrl = `${baseUrl}/api/services`
-  const response = await fetch(servicesUrl, {
-    headers: {
-      'Cookie': `JSESSIONID=${orquestCookie}`,
-      'Content-Type': 'application/json',
-    }
-  })
-
-  if (!response.ok) {
-    throw new Error(`Error con autenticación global: ${response.status}`)
-  }
-
-  const services: OrquestService[] = await response.json()
-  
-  const servicesToUpsert = services.map((service) => ({
-    id: service.id,
-    nombre: service.name,
-    zona_horaria: service.timeZone || null,
-    latitud: service.lat || null,
-    longitud: service.lon || null,
-    datos_completos: service,
-    franchisee_id: null, // Sin franquiciado específico
-    updated_at: new Date().toISOString()
-  }))
-
-  const { error } = await supabaseClient
-    .from('orquest_services')
-    .upsert(servicesToUpsert, { onConflict: 'id' })
-
-  if (error) throw error
-
-  return new Response(
-    JSON.stringify({ 
-      message: `Sincronización global: ${servicesToUpsert.length} servicios`,
-      count: servicesToUpsert.length,
-      method: 'global_cookie'
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-  )
-}
