@@ -447,6 +447,29 @@ const Restaurantes = () => {
           </Button>
         </div>
 
+        {/* Buscador de restaurantes */}
+        <div className="flex items-center gap-3 p-4 bg-card rounded-lg border">
+          <Search className="h-5 w-5 text-muted-foreground shrink-0" />
+          <Input
+            placeholder="Buscar por código, nombre, ciudad o franquiciado..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+          <Badge variant="secondary" className="shrink-0">
+            {totalItems} resultado{totalItems !== 1 ? 's' : ''}
+          </Badge>
+        </div>
+
         {loadMode === 'direct' && (
           <Alert>
             <Info className="h-4 w-4" />
