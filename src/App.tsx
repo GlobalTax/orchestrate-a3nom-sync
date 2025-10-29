@@ -25,6 +25,7 @@ import Services from "./pages/admin/Services";
 import Restaurantes from "./pages/admin/Restaurantes";
 import Settings from "./pages/admin/Settings";
 import Sync from "./pages/admin/Sync";
+import OrquestSync from "./pages/admin/OrquestSync";
 import Health from "./pages/admin/Health";
 import DataQuality from "./pages/DataQuality";
 import Notifications from "./pages/Notifications";
@@ -75,6 +76,7 @@ const App = () => {
               <Route path="/admin/services" element={<Services />} />
               <Route path="/admin/ajustes" element={<Settings />} />
               <Route path="/admin/sincronizar" element={<Sync />} />
+              <Route path="/admin/sincronizacion-orquest" element={<OrquestSync />} />
               <Route path="/admin/health" element={<Health />} />
               <Route path="/notificaciones" element={<Notifications />} />
             </Route>

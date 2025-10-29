@@ -14,12 +14,12 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3)
     try {
       const response = await fetch(url, options)
       
-      // Respetar Retry-After header
+      // Respetar Retry-After header para 429 y 5xx
       if (response.status === 429 || response.status >= 500) {
         const retryAfter = response.headers.get('Retry-After')
         const delayMs = retryAfter 
           ? parseInt(retryAfter) * 1000 
-          : Math.min(1000 * Math.pow(2, attempt), 30000)
+          : Math.min(1000 * Math.pow(2, attempt), 30000) // Exponential backoff, max 30s
         
         console.warn(`⚠️ HTTP ${response.status}, reintentando en ${delayMs}ms (intento ${attempt}/${maxRetries})`)
         
@@ -34,16 +34,16 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3)
       lastError = error as Error
       if (attempt < maxRetries) {
         const delayMs = Math.min(1000 * Math.pow(2, attempt), 30000)
-        console.warn(`⚠️ Error de red, reintentando en ${delayMs}ms (intento ${attempt}/${maxRetries})`)
+        console.warn(`⚠️ Error de red, reintentando en ${delayMs}ms (intento ${attempt}/${maxRetries}):`, error)
         await new Promise(resolve => setTimeout(resolve, delayMs))
       }
     }
   }
   
-  throw lastError || new Error('Error desconocido')
+  throw lastError || new Error('Error desconocido en fetchWithRetry')
 }
 
-// Upserts por lotes
+// Upserts por lotes (chunking)
 async function upsertInChunks(supabase: any, tableName: string, data: any[], chunkSize: number) {
   const chunks = []
   for (let i = 0; i < data.length; i += chunkSize) {
@@ -89,12 +89,12 @@ function getCorsHeaders(request: Request) {
 }
 
 interface OrquestService {
-  id: string;
-  name: string;
-  timeZone?: string;
-  lat?: number;
-  lon?: number;
-  [key: string]: any;
+  id: string
+  name: string
+  timeZone?: string
+  lat?: number
+  lon?: number
+  [key: string]: any
 }
 
 Deno.serve(async (req) => {
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Validar origen
+  // Validar origen si CORS no es '*'
   if (!ALLOWED_ORIGINS.includes('*')) {
     const origin = req.headers.get('origin')
     if (!origin || !ALLOWED_ORIGINS.includes(origin)) {
@@ -112,17 +112,38 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Crear log de sincronización
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  )
+
+  let syncLogId: string | null = null
+
   try {
-    console.log('🔄 Iniciando sincronización de servicios de Orquest...')
+    console.log(`🔄 Iniciando sincronización de servicios Orquest`)
     console.log(`📍 API Base URL: ${ORQUEST_API_BASE_URL}`)
     console.log(`🏢 Business ID: ${ORQUEST_BUSINESS_ID}`)
     console.log(`📦 Chunk size: ${UPSERT_CHUNK_SIZE}`)
     console.log(`🌐 CORS origins: ${ALLOWED_ORIGINS.join(', ')}`)
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    // Crear log inicial
+    const { data: logData, error: logError } = await supabaseClient
+      .from('orquest_services_sync_logs')
+      .insert({
+        status: 'running',
+        trigger_source: 'manual',
+        started_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (logError) {
+      console.error('⚠️ No se pudo crear log, continuando sin log:', logError)
+    } else {
+      syncLogId = logData.id
+      console.log(`📝 Log creado: ${syncLogId}`)
+    }
 
     // Obtener todos los franquiciados con API Key configurada
     const { data: franchisees, error: franchiseesError } = await supabaseClient
@@ -133,17 +154,17 @@ Deno.serve(async (req) => {
     if (franchiseesError) throw franchiseesError
 
     if (!franchisees || franchisees.length === 0) {
-      console.error('❌ No hay franquiciados con API Key configurada')
       throw new Error(
-        'No se pueden sincronizar servicios: No hay franquiciados con orquest_api_key configurada. ' +
-        'Por favor, configura al menos un franquiciado con su API Key en la sección de Franquiciados.'
+        'No se pueden sincronizar servicios: No hay franquiciados con orquest_api_key configurada.'
       )
     }
 
-    console.log(`📋 Sincronizando servicios para ${franchisees.length} franquiciados...`)
+    console.log(`📋 Procesando ${franchisees.length} franquiciados...`)
 
     const results = []
-    let totalServicesUpdated = 0
+    let totalServices = 0
+    let successCount = 0
+    let errorCount = 0
 
     for (const franchisee of franchisees) {
       try {
@@ -168,7 +189,6 @@ Deno.serve(async (req) => {
         console.log(`  ✅ Obtenidos ${services.length} servicios`)
 
         if (services.length > 0) {
-          // Transformar y guardar servicios con referencia al franquiciado
           const servicesToUpsert = services.map((service) => ({
             id: service.id,
             nombre: service.name,
@@ -176,13 +196,14 @@ Deno.serve(async (req) => {
             latitud: service.lat || null,
             longitud: service.lon || null,
             datos_completos: service,
-            franchisee_id: franchisee.id, // ✨ Vincular al franquiciado
+            franchisee_id: franchisee.id,
             updated_at: new Date().toISOString()
           }))
 
-          await upsertInChunks(supabaseClient, 'orquest_services', servicesToUpsert, UPSERT_CHUNK_SIZE)
+          await upsertInChunks(supabaseClient, 'servicios_orquest', servicesToUpsert, UPSERT_CHUNK_SIZE)
 
-          totalServicesUpdated += servicesToUpsert.length
+          totalServices += servicesToUpsert.length
+          successCount++
           results.push({
             franchisee: franchisee.name,
             email: franchisee.email,
@@ -190,11 +211,20 @@ Deno.serve(async (req) => {
             status: 'success'
           })
           console.log(`  💾 ${servicesToUpsert.length} servicios guardados`)
+        } else {
+          successCount++
+          results.push({
+            franchisee: franchisee.name,
+            email: franchisee.email,
+            services: 0,
+            status: 'success'
+          })
         }
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
         console.error(`  ❌ Error en ${franchisee.name}:`, errorMessage)
+        errorCount++
         results.push({
           franchisee: franchisee.name,
           email: franchisee.email,
@@ -204,14 +234,37 @@ Deno.serve(async (req) => {
       }
     }
 
-    const successMessage = `✅ Sincronización completada: ${totalServicesUpdated} servicios actualizados de ${franchisees.length} franquiciados`
+    const finalStatus = errorCount === 0 ? 'completed' : (successCount > 0 ? 'partial' : 'failed')
+    const successMessage = `✅ Sincronización ${finalStatus}: ${totalServices} servicios de ${franchisees.length} franquiciados (${successCount} éxitos, ${errorCount} errores)`
     console.log(`\n${successMessage}`)
+
+    // Actualizar log final
+    if (syncLogId) {
+      await supabaseClient
+        .from('orquest_services_sync_logs')
+        .update({
+          completed_at: new Date().toISOString(),
+          status: finalStatus,
+          total_franchisees: franchisees.length,
+          franchisees_succeeded: successCount,
+          franchisees_failed: errorCount,
+          total_services: totalServices,
+          results: results,
+          errors: results.filter(r => r.status === 'error')
+        })
+        .eq('id', syncLogId)
+    }
 
     return new Response(
       JSON.stringify({ 
+        success: true,
         message: successMessage,
-        total_services: totalServicesUpdated,
-        franchisees_processed: franchisees.length,
+        stats: {
+          total_services: totalServices,
+          franchisees_processed: franchisees.length,
+          franchisees_succeeded: successCount,
+          franchisees_failed: errorCount
+        },
         results,
         timestamp: new Date().toISOString()
       }),
@@ -224,8 +277,22 @@ Deno.serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
     console.error('❌ Error en sincronización:', error)
+
+    // Actualizar log con error
+    if (syncLogId) {
+      await supabaseClient
+        .from('orquest_services_sync_logs')
+        .update({
+          completed_at: new Date().toISOString(),
+          status: 'failed',
+          errors: [{ error: errorMessage }]
+        })
+        .eq('id', syncLogId)
+    }
+
     return new Response(
       JSON.stringify({ 
+        success: false,
         error: errorMessage,
         timestamp: new Date().toISOString()
       }),
@@ -236,4 +303,3 @@ Deno.serve(async (req) => {
     )
   }
 })
-

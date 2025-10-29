@@ -174,7 +174,7 @@ export type Database = {
           created_at: string
           diff: Json | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           new_data: Json | null
           old_data: Json | null
           row_id: string | null
@@ -188,7 +188,7 @@ export type Database = {
           created_at?: string
           diff?: Json | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_data?: Json | null
           old_data?: Json | null
           row_id?: string | null
@@ -202,7 +202,7 @@ export type Database = {
           created_at?: string
           diff?: Json | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_data?: Json | null
           old_data?: Json | null
           row_id?: string | null
@@ -663,6 +663,54 @@ export type Database = {
           },
         ]
       }
+      orquest_services_sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          errors: Json | null
+          franchisees_failed: number | null
+          franchisees_succeeded: number | null
+          id: string
+          results: Json | null
+          started_at: string | null
+          status: string | null
+          total_franchisees: number | null
+          total_services: number | null
+          trigger_source: string | null
+          triggered_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          errors?: Json | null
+          franchisees_failed?: number | null
+          franchisees_succeeded?: number | null
+          id?: string
+          results?: Json | null
+          started_at?: string | null
+          status?: string | null
+          total_franchisees?: number | null
+          total_services?: number | null
+          trigger_source?: string | null
+          triggered_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          errors?: Json | null
+          franchisees_failed?: number | null
+          franchisees_succeeded?: number | null
+          id?: string
+          results?: Json | null
+          started_at?: string | null
+          status?: string | null
+          total_franchisees?: number | null
+          total_services?: number | null
+          trigger_source?: string | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       payrolls: {
         Row: {
           coste_total: number | null
@@ -860,6 +908,50 @@ export type Database = {
           },
         ]
       }
+      servicios_orquest: {
+        Row: {
+          created_at: string | null
+          datos_completos: Json | null
+          franchisee_id: string | null
+          id: string
+          latitud: number | null
+          longitud: number | null
+          nombre: string
+          updated_at: string | null
+          zona_horaria: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          datos_completos?: Json | null
+          franchisee_id?: string | null
+          id: string
+          latitud?: number | null
+          longitud?: number | null
+          nombre: string
+          updated_at?: string | null
+          zona_horaria?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          datos_completos?: Json | null
+          franchisee_id?: string | null
+          id?: string
+          latitud?: number | null
+          longitud?: number | null
+          nombre?: string
+          updated_at?: string | null
+          zona_horaria?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servicios_orquest_franchisee_id_fkey"
+            columns: ["franchisee_id"]
+            isOneToOne: false
+            referencedRelation: "franchisees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sync_logs: {
         Row: {
           completed_at: string | null
@@ -1043,7 +1135,7 @@ export type Database = {
         }[]
       }
       get_centros: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           centro: string
         }[]
@@ -1110,7 +1202,7 @@ export type Database = {
         }[]
       }
       get_restaurants_with_franchisees: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           address: string
           city: string

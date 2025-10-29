@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.sync_orquest_services]
 verify_jwt = false
 
+[functions.sincronizar-orquest-servicios]
+verify_jwt = false
+
 [functions.check_system_health]
 verify_jwt = false
 

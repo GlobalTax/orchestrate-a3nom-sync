@@ -227,17 +227,32 @@ const Layout = () => {
               </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
+                        onClick={() => navigate("/admin/sincronizacion-orquest")}
+                        isActive={isActive("/admin/sincronizacion-orquest")}
+                        tooltip="Sincronización Orquest"
+                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
+                          isActive("/admin/sincronizacion-orquest") 
+                            ? "bg-primary/8 text-primary font-medium" 
+                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        <span>Sync Orquest</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
                         onClick={() => navigate("/admin/sincronizar")}
                         isActive={isActive("/admin/sincronizar")}
-                        tooltip="Sincronización"
+                        tooltip="Sincronización Operativa"
                         className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
                           isActive("/admin/sincronizar") 
                             ? "bg-primary/8 text-primary font-medium" 
                             : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        <span>Sincronización</span>
+                        <Server className="h-4 w-4 mr-2" />
+                        <span>Sync Operativa</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
