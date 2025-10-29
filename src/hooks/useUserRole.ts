@@ -37,10 +37,11 @@ export const useUserRole = () => {
         };
       }
 
-      // Fetch user roles with franchisee_id
+      // Fetch user roles with franchisee_id (explicitly filter by user)
       const { data: userRoles, error } = await supabase
         .from("user_roles")
-        .select("role, centro, franchisee_id") as any;
+        .select("role, centro, franchisee_id")
+        .eq("user_id", user.id) as any;
 
       if (error) throw error;
 
@@ -77,9 +78,11 @@ export const useUserRole = () => {
         userId: user.id,
       };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 0, // No caché, siempre refetch
     gcTime: 10 * 60 * 1000, // 10 minutos (antes cacheTime)
     retry: 1,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const roles = data?.roles || [];

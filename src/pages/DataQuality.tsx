@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCentro } from "@/contexts/CentroContext";
 import { useDataQualityIssues, useDataQualityMutations, DQIssue } from "@/hooks/useDataQuality";
@@ -36,6 +37,7 @@ const tipoLabels = {
 };
 
 export default function DataQuality() {
+  const queryClient = useQueryClient();
   const { isAdmin, isGestor, loading: roleLoading } = useUserRole();
   const { selectedCentro: globalCentro } = useCentro();
 
@@ -113,7 +115,14 @@ export default function DataQuality() {
       <div className="text-center py-12">
         <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
         <h2 className="text-2xl font-bold">Acceso Denegado</h2>
-        <p className="text-muted-foreground">No tienes permisos para ver esta página</p>
+        <p className="text-muted-foreground mb-4">No tienes permisos para ver esta página</p>
+        <Button
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['user_role'] })}
+          variant="outline"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Reintentar
+        </Button>
       </div>
     );
   }
