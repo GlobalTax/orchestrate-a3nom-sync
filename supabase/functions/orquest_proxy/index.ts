@@ -110,8 +110,12 @@ serve(async (req) => {
       requestOptions.body = JSON.stringify(body);
     }
 
-    // Forward request to Orquest
+    // Forward request to Orquest with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    requestOptions.signal = controller.signal;
     const response = await fetch(url, requestOptions);
+    clearTimeout(timeoutId);
     const endTime = performance.now();
     const latencyMs = Math.round(endTime - startTime);
     

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   SidebarProvider,
@@ -43,6 +44,7 @@ const Layout = () => {
   const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
   const { isAdmin } = useUserRole();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [everAdmin, setEverAdmin] = useState(false);
 
@@ -72,6 +74,9 @@ const Layout = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    queryClient.clear();
+    localStorage.removeItem("selected_restaurant_id");
+    localStorage.removeItem("show_inactive_centres");
     toast.success("Sesión cerrada correctamente");
     navigate("/auth");
   };

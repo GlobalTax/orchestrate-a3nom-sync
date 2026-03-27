@@ -4,6 +4,7 @@ export { EmployeesService } from "./employees.service";
 export { SchedulesService } from "./schedules.service";
 export { AbsencesService } from "./absences.service";
 export { CostsService } from "./costs.service";
+export { ImportService } from "./import.service";
 
 // Export types
 export type { Employee } from "./employees.service";
@@ -15,3 +16,4 @@ export type {
   PayrollCost,
   PlannedVsActualCost,
 } from "./costs.service";
+export type { ImportResult } from "./import.service";

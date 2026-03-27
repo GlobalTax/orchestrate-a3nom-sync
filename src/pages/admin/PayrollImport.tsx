@@ -286,7 +286,7 @@ const PayrollImport = () => {
         loaded_rows: loaded,
         skipped_rows: skipped,
         error_rows: errorCount,
-        error_details: errors.length > 0 ? (errors as any) : null,
+        error_details: errors.length > 0 ? errors : null,
         status: "completed",
       }).eq("id", logId);
 
@@ -306,7 +306,7 @@ const PayrollImport = () => {
       
       await supabase.from("import_logs").update({
         status: "failed",
-        error_details: [{ error: error.message }] as any,
+        error_details: [{ error: error.message }],
       }).eq("id", logId);
     }
   };

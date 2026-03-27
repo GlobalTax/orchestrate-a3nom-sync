@@ -169,7 +169,7 @@ const Calendar = () => {
         schedule: scheduleData 
       });
     } else {
-      await scheduleMutations.create.mutateAsync(scheduleData as any);
+      await scheduleMutations.create.mutateAsync(scheduleData);
     }
 
     setIsScheduleDialogOpen(false);
@@ -196,7 +196,7 @@ const Calendar = () => {
         absence: absenceData 
       });
     } else {
-      await absenceMutations.create.mutateAsync(absenceData as any);
+      await absenceMutations.create.mutateAsync(absenceData);
     }
 
     setIsAbsenceDialogOpen(false);

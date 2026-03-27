@@ -511,7 +511,7 @@ const Restaurantes = () => {
               <div>✅ Franquiciados: {franchisees.length}</div>
               <div>✅ Services: {Object.keys(servicesCount).length} restaurantes con services</div>
               <div>Filtro activo: {showInactive ? 'Todos' : 'Solo activos'}</div>
-              {restaurantsError && <div className="text-destructive">❌ Error: {(restaurantsError as any).message}</div>}
+              {restaurantsError && <div className="text-destructive">❌ Error: {restaurantsError instanceof Error ? restaurantsError.message : 'Unknown error'}</div>}
             </AlertDescription>
           </Alert>
         )}

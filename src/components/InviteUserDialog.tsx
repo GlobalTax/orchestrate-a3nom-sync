@@ -124,7 +124,7 @@ export const InviteUserDialog = ({ open, onOpenChange, franchisees }: InviteUser
 
             <div className="space-y-2">
               <Label htmlFor="role">Rol *</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as any })}>
+              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as typeof formData.role })}>
                 <SelectTrigger id="role">
                   <SelectValue placeholder="Seleccionar rol" />
                 </SelectTrigger>

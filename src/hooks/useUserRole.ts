@@ -41,14 +41,14 @@ export const useUserRole = () => {
       const { data: userRoles, error } = await supabase
         .from("user_roles")
         .select("role, centro, franchisee_id")
-        .eq("user_id", user.id) as any;
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
-      const uniqueRoles = [...new Set(userRoles?.map((r: any) => r.role as AppRole) || [])] as AppRole[];
+      const uniqueRoles = [...new Set((userRoles ?? []).map((r) => r.role as AppRole))];
 
       // Extract franchisee_id if exists
-      const franchiseeRole = userRoles?.find((r: any) => r.franchisee_id);
+      const franchiseeRole = (userRoles ?? []).find((r) => r.franchisee_id);
       const franchiseeId = franchiseeRole?.franchisee_id || null;
 
       // Fetch accessible centros from view

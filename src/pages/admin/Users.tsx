@@ -92,16 +92,16 @@ const Users = () => {
       // Combine data
       const usersWithRoles: UserWithRoles[] = (profiles || []).map(profile => {
         const roles = userRoles?.filter(ur => ur.user_id === profile.id) || [];
-        const franchiseeRole = roles.find((r: any) => r.franchisee_id) as any;
+        const franchiseeRole = roles.find((r) => r.franchisee_id);
         const franchisee = franchiseeData?.find(f => f.id === franchiseeRole?.franchisee_id);
-        
+
         return {
           id: profile.id,
           email: profile.email || "",
           nombre: profile.nombre || "",
           apellidos: profile.apellidos || "",
-          roles: roles.map((r: any) => r.role),
-          centro: roles.find((r: any) => r.centro)?.centro as any,
+          roles: roles.map((r) => r.role as "admin" | "franquiciado" | "gestor" | "asesoria"),
+          centro: roles.find((r) => r.centro)?.centro ?? undefined,
           franchisee_id: franchiseeRole?.franchisee_id,
           franchisee_name: franchisee?.name,
         };
@@ -127,7 +127,7 @@ const Users = () => {
         .from("user_roles")
         .select("*")
         .eq("user_id", userId)
-        .eq("role", role as any)
+        .eq("role", role)
         .single();
 
       if (existingRole) {
@@ -143,13 +143,13 @@ const Users = () => {
       } else {
         // Insert new role
         const { error } = await supabase
-          .from("user_roles" as any)
+          .from("user_roles")
           .insert({
             user_id: userId,
             role,
             centro: role === "asesoria" ? centro : null,
             franchisee_id: ['franquiciado', 'gestor'].includes(role) ? franchiseeId : null,
-          } as any);
+          });
 
         if (error) throw error;
       }
@@ -171,7 +171,7 @@ const Users = () => {
         .from("user_roles")
         .delete()
         .eq("user_id", userId)
-        .eq("role", role as any);
+        .eq("role", role);
 
       if (error) throw error;
 
@@ -319,7 +319,7 @@ const Users = () => {
                       <TableCell className="text-right">
                         {selectedUser === user.id ? (
                           <div className="space-y-2">
-                            <Select value={newRole} onValueChange={(value) => setNewRole(value as any)}>
+                            <Select value={newRole} onValueChange={(value) => setNewRole(value as typeof newRole)}>
                               <SelectTrigger className="w-40">
                                 <SelectValue placeholder="Seleccionar rol" />
                               </SelectTrigger>
