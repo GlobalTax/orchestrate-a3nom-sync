@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
 import NotificationBell from "@/components/NotificationBell";
 import { RestaurantSelector } from "@/components/RestaurantSelector";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Layout = () => {
   const navigate = useNavigate();
@@ -71,6 +72,14 @@ const Layout = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // Redirect non-admin users from admin routes
+  useEffect(() => {
+    if (session && !isAdmin && location.pathname.startsWith("/admin")) {
+      navigate("/dashboard");
+      toast.error("No tienes permisos para acceder a esta sección");
+    }
+  }, [session, isAdmin, location.pathname, navigate]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -316,6 +325,7 @@ const Layout = () => {
             
             <div className="flex items-center gap-2">
               <RestaurantSelector />
+              <ThemeToggle />
               <NotificationBell />
             </div>
           </header>

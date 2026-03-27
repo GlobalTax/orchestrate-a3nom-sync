@@ -13,7 +13,18 @@ import { logger } from "@/lib/logger";
 export default function NotificationBell() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [notifications, setNotifications] = useState<any[]>([]);
+  interface Notification {
+    id: string;
+    titulo: string;
+    mensaje: string;
+    severidad: string;
+    leida: boolean;
+    leida_at: string | null;
+    created_at: string;
+    destinatario_user_id: string;
+  }
+
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
 

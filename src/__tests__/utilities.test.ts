@@ -10,6 +10,15 @@ import { sanitizeString, sanitizeInput, sanitizeRecord } from "@/lib/sanitize";
 import { Formatters } from "@/lib/formatters";
 import { AppError, retryWithBackoff } from "@/lib/errorHandling";
 
+// Helper: use the same Intl.NumberFormat the source code uses so tests pass
+// regardless of whether the environment has full ICU data for es-ES.
+function esFormat(num: number, decimals = 0): string {
+  return new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(num);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 1. sanitize.ts
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -61,6 +70,38 @@ describe("sanitizeString", () => {
       "&lt;&lt;&gt;&gt;&amp;&amp;"
     );
   });
+
+  it("handles strings with only special characters", () => {
+    expect(sanitizeString("&<>\"'")).toBe(
+      "&amp;&lt;&gt;&quot;&#x27;"
+    );
+  });
+
+  it("handles unicode text without escaping it", () => {
+    expect(sanitizeString("Hola mundo")).toBe("Hola mundo");
+    expect(sanitizeString("cafe\u0301")).toBe("cafe\u0301");
+  });
+
+  it("handles nested HTML attributes", () => {
+    expect(sanitizeString('<div class="foo" data-x=\'bar\'>')).toBe(
+      "&lt;div class=&quot;foo&quot; data-x=&#x27;bar&#x27;&gt;"
+    );
+  });
+
+  it("escapes ampersands that already look like entities", () => {
+    // Should double-escape: &amp; becomes &amp;amp;
+    expect(sanitizeString("&amp;")).toBe("&amp;amp;");
+  });
+
+  it("handles very long strings", () => {
+    const input = "<".repeat(1000);
+    const expected = "&lt;".repeat(1000);
+    expect(sanitizeString(input)).toBe(expected);
+  });
+
+  it("handles newlines and tabs without escaping them", () => {
+    expect(sanitizeString("line1\nline2\ttab")).toBe("line1\nline2\ttab");
+  });
 });
 
 describe("sanitizeInput", () => {
@@ -95,6 +136,30 @@ describe("sanitizeInput", () => {
   it("handles empty string (falsy but not nullish)", () => {
     expect(sanitizeInput("")).toBe("");
   });
+
+  it("handles false (falsy but not nullish)", () => {
+    expect(sanitizeInput(false)).toBe("false");
+  });
+
+  it("trims tabs and newlines from edges", () => {
+    expect(sanitizeInput("\t\nhello\n\t")).toBe("hello");
+  });
+
+  it("converts objects via String()", () => {
+    expect(sanitizeInput({ toString: () => "<obj>" })).toBe("&lt;obj&gt;");
+  });
+
+  it("handles whitespace-only input", () => {
+    expect(sanitizeInput("   ")).toBe("");
+  });
+
+  it("handles NaN", () => {
+    expect(sanitizeInput(NaN)).toBe("NaN");
+  });
+
+  it("handles Infinity", () => {
+    expect(sanitizeInput(Infinity)).toBe("Infinity");
+  });
 });
 
 describe("sanitizeRecord", () => {
@@ -121,6 +186,12 @@ describe("sanitizeRecord", () => {
     const record = { name: "test", data: null };
     const result = sanitizeRecord(record);
     expect(result.data).toBeNull();
+  });
+
+  it("leaves undefined fields unchanged", () => {
+    const record = { name: "test", data: undefined };
+    const result = sanitizeRecord(record);
+    expect(result.data).toBeUndefined();
   });
 
   it("does not mutate the original record", () => {
@@ -157,6 +228,21 @@ describe("sanitizeRecord", () => {
     // Arrays are not strings, so left unchanged
     expect(result.tags).toEqual(["a", "b"]);
   });
+
+  it("handles a record with many string fields", () => {
+    const record = { a: "<x>", b: "y&z", c: "safe" };
+    const result = sanitizeRecord(record);
+    expect(result.a).toBe("&lt;x&gt;");
+    expect(result.b).toBe("y&amp;z");
+    expect(result.c).toBe("safe");
+  });
+
+  it("returns a shallow copy even when no strings exist", () => {
+    const record = { count: 1, flag: true };
+    const result = sanitizeRecord(record);
+    expect(result).toEqual(record);
+    expect(result).not.toBe(record); // different reference
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -174,21 +260,16 @@ describe("Formatters", () => {
       expect(Formatters.formatNumber(undefined)).toBe("-");
     });
 
-    it("formats integers", () => {
-      const result = Formatters.formatNumber(1234);
-      // Accept with or without locale thousands separator
-      expect(result).toMatch(/^1\.?234$/);
+    it("formats integers with es-ES locale", () => {
+      expect(Formatters.formatNumber(1234)).toBe(esFormat(1234));
     });
 
-    it("formats large numbers", () => {
-      const result = Formatters.formatNumber(1000000);
-      expect(result).toMatch(/^1\.?000\.?000$/);
+    it("formats large numbers with thousands separators", () => {
+      expect(Formatters.formatNumber(1000000)).toBe(esFormat(1000000));
     });
 
     it("formats with decimal places when specified", () => {
-      const result = Formatters.formatNumber(1234.5, 2);
-      // Accept both "1.234,50" (es-ES) and "1,234.50" (en) or "1234.50"/"1234,50"
-      expect(result).toContain("1234");
+      expect(Formatters.formatNumber(1234.5, 2)).toBe(esFormat(1234.5, 2));
     });
 
     it("formats zero", () => {
@@ -196,9 +277,19 @@ describe("Formatters", () => {
     });
 
     it("formats negative numbers", () => {
-      const result = Formatters.formatNumber(-1234);
-      expect(result).toContain("1234");
-      expect(result.startsWith("-")).toBe(true);
+      expect(Formatters.formatNumber(-1234)).toBe(esFormat(-1234));
+    });
+
+    it("formats small numbers", () => {
+      expect(Formatters.formatNumber(5)).toBe("5");
+    });
+
+    it("uses zero decimal places by default (rounds)", () => {
+      expect(Formatters.formatNumber(10.9)).toBe(esFormat(10.9));
+    });
+
+    it("formats with 3 decimal places", () => {
+      expect(Formatters.formatNumber(3.14159, 3)).toBe(esFormat(3.14159, 3));
     });
   });
 
@@ -236,6 +327,18 @@ describe("Formatters", () => {
       // 0.1 hours = 6 minutes
       expect(Formatters.formatHours(0.1)).toBe("0h 6m");
     });
+
+    it("formats 24 hours", () => {
+      expect(Formatters.formatHours(24)).toBe("24h");
+    });
+
+    it("formats half hour without whole hours", () => {
+      expect(Formatters.formatHours(0.5)).toBe("0h 30m");
+    });
+
+    it("formats 1 hour exactly", () => {
+      expect(Formatters.formatHours(1)).toBe("1h");
+    });
   });
 
   // ── formatEmail ───────────────────────────────────────────────────────────
@@ -263,7 +366,7 @@ describe("Formatters", () => {
       expect(result.length).toBe(30);
     });
 
-    it("returns email exactly at maxLength unchanged", () => {
+    it("truncates email over default maxLength (30)", () => {
       const email = "a".repeat(30) + "@b.com";
       // 36 chars, default maxLength 30 => truncated
       expect(Formatters.formatEmail(email).length).toBe(30);
@@ -272,6 +375,15 @@ describe("Formatters", () => {
     it("respects custom maxLength", () => {
       const email = "test@example.com"; // 16 chars
       expect(Formatters.formatEmail(email, 10)).toBe("test@ex...");
+    });
+
+    it("returns email exactly at default maxLength unchanged", () => {
+      const email = "a".repeat(22) + "@b.co.es"; // exactly 30 chars
+      expect(Formatters.formatEmail(email)).toBe(email);
+    });
+
+    it("returns email shorter than maxLength unchanged", () => {
+      expect(Formatters.formatEmail("hi@x.co", 50)).toBe("hi@x.co");
     });
   });
 
@@ -303,6 +415,14 @@ describe("Formatters", () => {
 
     it("returns original phone for short numbers", () => {
       expect(Formatters.formatPhone("12345")).toBe("12345");
+    });
+
+    it("strips spaces and dashes before checking length", () => {
+      expect(Formatters.formatPhone("6 1 2-3 4 5-6 7 8")).toBe("612 345 678");
+    });
+
+    it("formats phone with parentheses stripped", () => {
+      expect(Formatters.formatPhone("(612)345678")).toBe("612 345 678");
     });
   });
 
@@ -360,6 +480,16 @@ describe("Formatters", () => {
       const str = "a".repeat(50);
       expect(Formatters.truncate(str, 50)).toBe(str);
     });
+
+    it("returns single character string unchanged", () => {
+      expect(Formatters.truncate("x")).toBe("x");
+    });
+
+    it("truncates at a very small maxLength", () => {
+      const result = Formatters.truncate("abcdefghij", 6);
+      expect(result).toBe("abc...");
+      expect(result.length).toBe(6);
+    });
   });
 
   // ── formatFullName ────────────────────────────────────────────────────────
@@ -385,8 +515,15 @@ describe("Formatters", () => {
     });
 
     it('returns "-" when both are empty strings', () => {
-      // empty strings are falsy so filter(Boolean) removes them
       expect(Formatters.formatFullName("", "")).toBe("-");
+    });
+
+    it("returns only first name when last name is undefined", () => {
+      expect(Formatters.formatFullName("Alice", undefined)).toBe("Alice");
+    });
+
+    it("returns only last name when first name is empty string", () => {
+      expect(Formatters.formatFullName("", "Smith")).toBe("Smith");
     });
   });
 
@@ -415,6 +552,10 @@ describe("Formatters", () => {
     it("uppercases lowercase initials", () => {
       expect(Formatters.formatInitials("john", "doe")).toBe("JD");
     });
+
+    it("handles single character names", () => {
+      expect(Formatters.formatInitials("A", "B")).toBe("AB");
+    });
   });
 
   // ── formatFileSize ────────────────────────────────────────────────────────
@@ -425,6 +566,10 @@ describe("Formatters", () => {
 
     it("formats bytes", () => {
       expect(Formatters.formatFileSize(500)).toBe("500.00 B");
+    });
+
+    it("formats 1 byte", () => {
+      expect(Formatters.formatFileSize(1)).toBe("1.00 B");
     });
 
     it("formats kilobytes", () => {
@@ -446,6 +591,14 @@ describe("Formatters", () => {
     it("formats fractional megabytes", () => {
       // 2.5 MB = 2621440 bytes
       expect(Formatters.formatFileSize(2621440)).toBe("2.50 MB");
+    });
+
+    it("formats just under 1 KB", () => {
+      expect(Formatters.formatFileSize(1023)).toBe("1023.00 B");
+    });
+
+    it("formats just over 1 KB", () => {
+      expect(Formatters.formatFileSize(1025)).toBe("1.00 KB");
     });
   });
 });
@@ -500,9 +653,27 @@ describe("AppError", () => {
       expect((e as AppError).code).toBe("TEST_CODE");
     }
   });
+
+  it("has a stack trace", () => {
+    const err = new AppError("trace");
+    expect(err.stack).toBeDefined();
+    expect(err.stack).toContain("AppError");
+  });
+
+  it("stores complex details objects", () => {
+    const details = { nested: { a: 1 }, list: [1, 2, 3] };
+    const err = new AppError("complex", "COMPLEX", details);
+    expect(err.details).toEqual(details);
+  });
+
+  it("stores null as details when explicitly passed", () => {
+    const err = new AppError("msg", "CODE", null);
+    expect(err.details).toBeNull();
+  });
 });
 
 describe("retryWithBackoff", () => {
+  // Use real timers with initialDelay=1 to avoid fake-timer unhandled rejection issues.
   it("returns the result on first successful try", async () => {
     const fn = vi.fn().mockResolvedValue("success");
     const result = await retryWithBackoff(fn, 1, 1);
@@ -535,7 +706,9 @@ describe("retryWithBackoff", () => {
 
   it("throws the last error after all retries are exhausted", async () => {
     const fn = vi.fn().mockRejectedValue(new Error("persistent failure"));
-    await expect(retryWithBackoff(fn, 3, 1)).rejects.toThrow("persistent failure");
+    await expect(retryWithBackoff(fn, 3, 1)).rejects.toThrow(
+      "persistent failure"
+    );
     expect(fn).toHaveBeenCalledTimes(3);
   });
 
@@ -545,7 +718,7 @@ describe("retryWithBackoff", () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
-  it("does not delay after the final failed attempt", async () => {
+  it("does not retry when maxRetries is 1", async () => {
     const fn = vi.fn().mockRejectedValue(new Error("fail"));
     await expect(retryWithBackoff(fn, 1, 1)).rejects.toThrow("fail");
     expect(fn).toHaveBeenCalledTimes(1);
@@ -561,5 +734,42 @@ describe("retryWithBackoff", () => {
       expect(e).toBeInstanceOf(AppError);
       expect((e as AppError).code).toBe("CUSTOM_CODE");
     }
+  });
+
+  it("calls the function exactly maxRetries times before giving up", async () => {
+    const fn = vi.fn().mockRejectedValue(new Error("nope"));
+    await expect(retryWithBackoff(fn, 5, 1)).rejects.toThrow("nope");
+    expect(fn).toHaveBeenCalledTimes(5);
+  });
+
+  it("uses exponential backoff (verified via timing)", async () => {
+    const timestamps: number[] = [];
+    const fn = vi.fn().mockImplementation(() => {
+      timestamps.push(Date.now());
+      if (timestamps.length < 3) {
+        return Promise.reject(new Error("not yet"));
+      }
+      return Promise.resolve("done");
+    });
+
+    // initialDelay = 50ms so delays are 50, 100 (exponential)
+    const result = await retryWithBackoff(fn, 3, 50);
+    expect(result).toBe("done");
+    expect(fn).toHaveBeenCalledTimes(3);
+
+    // First retry delay should be ~50ms, second ~100ms
+    const delay1 = timestamps[1] - timestamps[0];
+    const delay2 = timestamps[2] - timestamps[1];
+    // Allow generous tolerance for CI
+    expect(delay1).toBeGreaterThanOrEqual(30);
+    expect(delay2).toBeGreaterThanOrEqual(60);
+    // Second delay should be roughly double the first
+    expect(delay2).toBeGreaterThan(delay1);
+  });
+
+  it("returns the resolved value type correctly", async () => {
+    const fn = vi.fn().mockResolvedValue({ id: 1, name: "test" });
+    const result = await retryWithBackoff(fn, 1, 1);
+    expect(result).toEqual({ id: 1, name: "test" });
   });
 });

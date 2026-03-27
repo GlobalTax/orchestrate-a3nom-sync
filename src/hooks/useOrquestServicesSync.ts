@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -32,8 +33,29 @@ export function useOrquestServicesSync() {
       if (error) throw error;
       return (data as unknown) as ServicesSyncLog[];
     },
-    refetchInterval: 10000, // Auto-refresh every 10s
   });
+
+  // Subscribe to real-time changes on sync logs (replaces polling)
+  useEffect(() => {
+    const channel = supabase
+      .channel('sync-logs-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orquest_services_sync_logs',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['orquest_services_sync_logs'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Execute sync mutation
   const syncMutation = useMutation({

@@ -30,6 +30,13 @@ export interface PlannedVsActualCost {
   costes_reales: number;
 }
 
+export interface DailyHoursEvolution {
+  fecha: string;
+  horas_planificadas: number;
+  horas_trabajadas: number;
+  horas_ausencia: number;
+}
+
 export class CostsService {
   static async getCostMetrics(
     startDate: string,
@@ -100,7 +107,7 @@ export class CostsService {
     startDate: string,
     endDate: string,
     centro?: string
-  ): Promise<any[]> {
+  ): Promise<DailyHoursEvolution[]> {
     const { data, error } = await supabase.rpc("get_daily_hours_evolution", {
       p_start_date: startDate,
       p_end_date: endDate,
