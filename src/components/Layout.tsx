@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
 import NotificationBell from "@/components/NotificationBell";
 import { RestaurantSelector } from "@/components/RestaurantSelector";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Layout = () => {
   const navigate = useNavigate();
@@ -316,6 +317,7 @@ const Layout = () => {
             
             <div className="flex items-center gap-2">
               <RestaurantSelector />
+              <ThemeToggle />
               <NotificationBell />
             </div>
           </header>
