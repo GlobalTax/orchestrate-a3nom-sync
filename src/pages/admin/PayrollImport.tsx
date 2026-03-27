@@ -247,8 +247,8 @@ const PayrollImport = () => {
             // Prepare payroll data
             payrollsToInsert.push({
               employee_id: employeeUuid,
-              periodo_inicio: mapped.periodo_inicio,
-              periodo_fin: mapped.periodo_fin,
+              periodo_inicio: String(mapped.periodo_inicio || ""),
+              periodo_fin: String(mapped.periodo_fin || ""),
               horas_trabajadas: mapped.horas_trabajadas ? Number(mapped.horas_trabajadas) : null,
               horas_vacaciones: mapped.horas_vacaciones ? Number(mapped.horas_vacaciones) : null,
               horas_formacion: mapped.horas_formacion ? Number(mapped.horas_formacion) : null,
@@ -290,7 +290,7 @@ const PayrollImport = () => {
         loaded_rows: loaded,
         skipped_rows: skipped,
         error_rows: errorCount,
-        error_details: errors.length > 0 ? errors : null,
+        error_details: errors.length > 0 ? (errors as unknown as import("@/integrations/supabase/types").Json) : null,
         status: "completed",
       }).eq("id", logId);
 

@@ -104,7 +104,7 @@ const Users = () => {
           apellidos: profile.apellidos || "",
           roles: roles.map((r) => r.role as "admin" | "franquiciado" | "gestor" | "asesoria"),
           centro: roles.find((r) => r.centro)?.centro ?? undefined,
-          franchisee_id: franchiseeRole?.franchisee_id,
+          franchisee_id: franchiseeRole?.franchisee_id ?? undefined,
           franchisee_name: franchisee?.name,
         };
       });
@@ -177,7 +177,7 @@ const Users = () => {
         .from("user_roles")
         .delete()
         .eq("user_id", userId)
-        .eq("role", role);
+        .eq("role", role as "admin" | "asesoria" | "contable" | "franquiciado" | "gestor");
 
       if (error) throw error;
 

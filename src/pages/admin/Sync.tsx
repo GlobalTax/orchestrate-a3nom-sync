@@ -74,7 +74,7 @@ export default function Sync() {
         .limit(50);
 
       if (error) throw error;
-      return data as SyncLog[];
+      return (data as unknown) as SyncLog[];
     },
     refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
@@ -108,7 +108,7 @@ export default function Sync() {
       params.centro_code = selectedCentro;
     }
 
-    executeSyncMutation.mutate(params);
+    executeSyncMutation.mutate(params as { sync_type: string; days_back?: number; centro_code?: string });
   };
 
   const getStatusBadge = (status: string) => {
