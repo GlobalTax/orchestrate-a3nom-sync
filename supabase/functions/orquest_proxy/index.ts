@@ -1,15 +1,26 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || ['*'];
+
+function getCorsHeaders(origin: string | null) {
+  if (ALLOWED_ORIGINS.includes('*')) {
+    return {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+  }
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0] || '';
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: getCorsHeaders(req.headers.get('origin')) });
   }
 
   const startTime = performance.now();
@@ -20,7 +31,7 @@ serve(async (req) => {
     if (!path) {
       return new Response(
         JSON.stringify({ error: 'Path parameter is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -31,7 +42,7 @@ serve(async (req) => {
       console.error('Missing Orquest base URL');
       return new Response(
         JSON.stringify({ error: 'Orquest configuration not found' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -77,7 +88,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'No authentication method available. Configure franchisee API key or global cookie.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -144,7 +155,7 @@ serve(async (req) => {
         }),
         { 
           status: response.status, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } 
         }
       );
     }
@@ -161,7 +172,7 @@ serve(async (req) => {
       }),
       { 
         status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } 
       }
     );
 
@@ -177,7 +188,7 @@ serve(async (req) => {
       }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } 
       }
     );
   }

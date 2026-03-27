@@ -4,16 +4,18 @@ project_id = "srwnjnrhxzcpftmbbyib"
 # Requires authentication - admin only
 
 [functions.orquest_proxy]
-verify_jwt = true
+# Called by authenticated frontend and other edge functions
+# JWT required to prevent unauthorized external access
 
 [functions.sync_orquest_services]
-verify_jwt = true
+# Proxy to sincronizar-orquest-servicios, called from frontend (requires auth)
 
 [functions.sincronizar-orquest-servicios]
-verify_jwt = true
+# Called by cron job with service_role_key or from frontend (requires auth)
 
 [functions.check_system_health]
-verify_jwt = true
+# Health check - allow unauthenticated for monitoring tools
+verify_jwt = false
 
 [functions.import_restaurants_csv]
-verify_jwt = true
+# Requires authentication - admin only

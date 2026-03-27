@@ -1,8 +1,19 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || ['*'];
+
+function getCorsHeaders(origin: string | null) {
+  if (ALLOWED_ORIGINS.includes('*')) {
+    return {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+  }
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0] || '';
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
 }
 
 interface SyncParams {
@@ -32,7 +43,7 @@ interface Centro {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: getCorsHeaders(req.headers.get('origin')) })
   }
 
   let logId: string | null = null;
@@ -63,7 +74,7 @@ Deno.serve(async (req) => {
         if (!allowedCentros.includes(centro_code)) {
           return new Response(
             JSON.stringify({ error: 'No tienes permisos para sincronizar este restaurante' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 403, headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } }
           );
         }
       }
@@ -334,7 +345,7 @@ Deno.serve(async (req) => {
           centres_synced: centros.length,
         },
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
@@ -357,7 +368,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req.headers.get('origin')), 'Content-Type': 'application/json' },
         status: 500 
       }
     );
@@ -437,50 +448,47 @@ async function syncEmployees(
 
     console.log(`  Found ${result.total} employees for ${centroCode}`);
 
-    // Process each employee
-    for (const emp of orquestEmployees) {
-      try {
-        // Check if employee exists to track insert vs update
-        const { data: existing } = await supabase
-          .from('employees')
-          .select('id')
-          .eq('employee_id_orquest', emp.id)
-          .maybeSingle();
+    // Check which employees already exist for insert vs update tracking
+    const orquestIds = orquestEmployees.map((e: any) => e.id).filter(Boolean);
+    const { data: existingEmps } = await supabase
+      .from('employees')
+      .select('employee_id_orquest')
+      .in('employee_id_orquest', orquestIds);
+    const existingSet = new Set(existingEmps?.map((e: any) => e.employee_id_orquest) || []);
 
-        const { error } = await supabase
-          .from('employees')
-          .upsert({
-            employee_id_orquest: emp.id,
-            nombre: emp.firstName || emp.name || 'Sin nombre',
-            apellidos: emp.lastName || emp.surname || '',
-            email: emp.email || null,
-            centro: centroCode,
-            fecha_alta: emp.startDate ? new Date(emp.startDate).toISOString().split('T')[0] : null,
-            fecha_baja: emp.endDate ? new Date(emp.endDate).toISOString().split('T')[0] : null,
-          }, { onConflict: 'employee_id_orquest' });
+    // Batch upsert employees
+    const BATCH_SIZE = 100;
+    const employeeRows = orquestEmployees.map((emp: any) => ({
+      employee_id_orquest: emp.id,
+      nombre: emp.firstName || emp.name || 'Sin nombre',
+      apellidos: emp.lastName || emp.surname || '',
+      email: emp.email || null,
+      centro: centroCode,
+      fecha_alta: emp.startDate ? new Date(emp.startDate).toISOString().split('T')[0] : null,
+      fecha_baja: emp.endDate ? new Date(emp.endDate).toISOString().split('T')[0] : null,
+    }));
 
-        if (error) {
-          result.errors++;
-          result.errorDetails.push({
-            type: 'employee',
-            centro: centroCode,
-            id: emp.id,
-            error: error.message,
-          });
-        } else if (existing) {
-          result.updated++;
-        } else {
-          result.inserted++;
-        }
-      } catch (err) {
-        result.errors++;
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    for (let i = 0; i < employeeRows.length; i += BATCH_SIZE) {
+      const batch = employeeRows.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase
+        .from('employees')
+        .upsert(batch, { onConflict: 'employee_id_orquest' });
+
+      if (error) {
+        result.errors += batch.length;
         result.errorDetails.push({
-          type: 'employee',
+          type: 'employee_batch',
           centro: centroCode,
-          id: emp.id,
-          error: errorMessage,
+          error: error.message,
         });
+      } else {
+        for (const row of batch) {
+          if (existingSet.has(row.employee_id_orquest)) {
+            result.updated++;
+          } else {
+            result.inserted++;
+          }
+        }
       }
     }
   } catch (error) {
@@ -536,58 +544,56 @@ async function syncSchedules(
 
     const employeeMap = new Map(employees?.map((e: any) => [e.employee_id_orquest, e.id]) || []);
 
-    // Process each assignment
+    // Build batch of schedule rows
+    const BATCH_SIZE = 100;
+    const scheduleRows: any[] = [];
+
     for (const assignment of assignments) {
-      try {
-        const employeeId = employeeMap.get(assignment.employeeId);
-        
-        if (!employeeId) {
-          result.errors++;
-          result.errorDetails.push({
-            type: 'schedule',
-            centro: centroCode,
-            id: assignment.id,
-            error: `Employee not found: ${assignment.employeeId}`,
-          });
-          continue;
-        }
-
-        const startTime = new Date(assignment.startTime);
-        const endTime = new Date(assignment.endTime);
-        const hours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-
-        const { error } = await supabase
-          .from('schedules')
-          .upsert({
-            employee_id: employeeId,
-            fecha: assignment.date,
-            hora_inicio: startTime.toISOString().split('T')[1].substring(0, 8),
-            hora_fin: endTime.toISOString().split('T')[1].substring(0, 8),
-            horas_planificadas: hours,
-            service_id: serviceId,
-            tipo_asignacion: assignment.type || null,
-          }, { onConflict: 'employee_id,fecha,service_id' });
-
-        if (error) {
-          result.errors++;
-          result.errorDetails.push({
-            type: 'schedule',
-            centro: centroCode,
-            id: assignment.id,
-            error: error.message,
-          });
-        } else {
-          result.inserted++;
-        }
-      } catch (err) {
+      const employeeId = employeeMap.get(assignment.employeeId);
+      if (!employeeId) {
         result.errors++;
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         result.errorDetails.push({
           type: 'schedule',
           centro: centroCode,
           id: assignment.id,
-          error: errorMessage,
+          error: `Employee not found: ${assignment.employeeId}`,
         });
+        continue;
+      }
+
+      // Extract time portion directly from Orquest strings to avoid timezone conversion
+      // Orquest sends times in the service's local timezone (e.g., Europe/Madrid)
+      const startTime = assignment.startTime;
+      const endTime = assignment.endTime;
+      const horaInicio = typeof startTime === 'string' ? startTime.split('T')[1]?.substring(0, 8) || '00:00:00' : '00:00:00';
+      const horaFin = typeof endTime === 'string' ? endTime.split('T')[1]?.substring(0, 8) || '00:00:00' : '00:00:00';
+      const [sh, sm] = horaInicio.split(':').map(Number);
+      const [eh, em] = horaFin.split(':').map(Number);
+      const hours = Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60);
+
+      scheduleRows.push({
+        employee_id: employeeId,
+        fecha: assignment.date,
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
+        horas_planificadas: hours,
+        service_id: serviceId,
+        tipo_asignacion: assignment.type || null,
+      });
+    }
+
+    // Batch upsert schedules
+    for (let i = 0; i < scheduleRows.length; i += BATCH_SIZE) {
+      const batch = scheduleRows.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase
+        .from('schedules')
+        .upsert(batch, { onConflict: 'employee_id,fecha,service_id' });
+
+      if (error) {
+        result.errors += batch.length;
+        result.errorDetails.push({ type: 'schedule_batch', centro: centroCode, error: error.message });
+      } else {
+        result.inserted += batch.length;
       }
     }
   } catch (error) {
@@ -643,52 +649,45 @@ async function syncAbsences(
 
     const employeeMap = new Map(employees?.map((e: any) => [e.employee_id_orquest, e.id]) || []);
 
-    // Process each absence
+    // Build batch of absence rows
+    const BATCH_SIZE = 100;
+    const absenceRows: any[] = [];
+
     for (const absence of absences) {
-      try {
-        const employeeId = employeeMap.get(absence.employeeId);
-        
-        if (!employeeId) {
-          result.errors++;
-          result.errorDetails.push({
-            type: 'absence',
-            centro: centroCode,
-            id: absence.id,
-            error: `Employee not found: ${absence.employeeId}`,
-          });
-          continue;
-        }
-
-        const { error } = await supabase
-          .from('absences')
-          .upsert({
-            employee_id: employeeId,
-            fecha: absence.date,
-            tipo: absence.type || 'Ausencia',
-            horas_ausencia: absence.hours || 8,
-            motivo: absence.reason || null,
-          }, { onConflict: 'employee_id,fecha,tipo' });
-
-        if (error) {
-          result.errors++;
-          result.errorDetails.push({
-            type: 'absence',
-            centro: centroCode,
-            id: absence.id,
-            error: error.message,
-          });
-        } else {
-          result.inserted++;
-        }
-      } catch (err) {
+      const employeeId = employeeMap.get(absence.employeeId);
+      if (!employeeId) {
         result.errors++;
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         result.errorDetails.push({
           type: 'absence',
           centro: centroCode,
           id: absence.id,
-          error: errorMessage,
+          error: `Employee not found: ${absence.employeeId}`,
         });
+        continue;
+      }
+
+      absenceRows.push({
+        employee_id: employeeId,
+        fecha: absence.date,
+        tipo: absence.type || 'Ausencia',
+        horas_ausencia: absence.hours || 8,
+        motivo: absence.reason || null,
+        service_id: serviceId,
+      });
+    }
+
+    // Batch upsert absences
+    for (let i = 0; i < absenceRows.length; i += BATCH_SIZE) {
+      const batch = absenceRows.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase
+        .from('absences')
+        .upsert(batch, { onConflict: 'employee_id,fecha,tipo,service_id' });
+
+      if (error) {
+        result.errors += batch.length;
+        result.errorDetails.push({ type: 'absence_batch', centro: centroCode, error: error.message });
+      } else {
+        result.inserted += batch.length;
       }
     }
   } catch (error) {
