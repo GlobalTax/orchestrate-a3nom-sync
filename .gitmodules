@@ -1,0 +1,3 @@
+[submodule "franqui-conta-sync"]
+	path = franqui-conta-sync
+	url = https://github.com/GlobalTax/franqui-conta-sync.git
