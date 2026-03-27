@@ -73,7 +73,7 @@ export const useDataQualityMutations = () => {
       const { data, error } = await supabase.rpc("detect_dq_issues", {
         p_start_date: format(startDate, "yyyy-MM-dd"),
         p_end_date: format(endDate, "yyyy-MM-dd"),
-        p_centro: centro || null,
+        p_centro: centro ?? undefined,
       });
       if (error) throw error;
       return data;

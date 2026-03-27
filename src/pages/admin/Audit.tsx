@@ -125,7 +125,7 @@ export default function Audit() {
 
       if (error) throw error;
 
-      setLogs(data || []);
+      setLogs((data || []) as unknown as AuditLog[]);
 
       // Calculate statistics
       const uniqueUsers = new Set(data?.map(log => log.user_email).filter(Boolean)).size;

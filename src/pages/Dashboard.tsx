@@ -166,7 +166,7 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {dailyData.length > 0 ? (
+                  {dailyData && dailyData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={350}>
                       <LineChart data={dailyData}>
 ...

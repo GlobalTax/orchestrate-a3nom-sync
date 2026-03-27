@@ -26,7 +26,7 @@ export const useUserRole = () => {
 
   const { data, isLoading: loading } = useQuery<UserRoleData>({
     queryKey: ['user_role', authTrigger],
-    queryFn: async () => {
+    queryFn: async (): Promise<UserRoleData> => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -58,7 +58,7 @@ export const useUserRole = () => {
         .select("centro_code")
         .eq("user_id", user.id);
 
-      const accessibleCentros = userCentres?.map(c => c.centro_code) || [];
+      const accessibleCentros = (userCentres?.map(c => c.centro_code) || []).filter((c): c is string => c != null);
 
       logger.info('useUserRole', 'User roles loaded', {
         userId: user.id,

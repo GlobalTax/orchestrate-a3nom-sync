@@ -29,7 +29,7 @@ const Costs = () => {
   const { payrollData, comparisonData, summary, isLoading } = useCostAnalysis(
     startDate,
     endDate,
-    selectedCentro
+    selectedCentro || "all"
   );
 
   const exportToCSV = () => {
