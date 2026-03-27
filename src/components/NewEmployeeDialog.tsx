@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { EmployeesService } from "@/services/api/employees.service";
+import { EmployeesService, type Employee } from "@/services/api/employees.service";
 import { employeeSchema, type EmployeeInput } from "@/lib/validators/employeeValidators";
 
 interface NewEmployeeDialogProps {
@@ -43,7 +43,7 @@ export const NewEmployeeDialog = ({ open, onOpenChange, centros }: NewEmployeeDi
   const centroValue = watch("centro");
 
   const mutation = useMutation({
-    mutationFn: (data: EmployeeInput) => EmployeesService.create(data),
+    mutationFn: (data: EmployeeInput) => EmployeesService.create(data as unknown as Omit<Employee, "id">),
     onSuccess: () => {
       toast.success("Empleado creado correctamente");
       queryClient.invalidateQueries({ queryKey: ["employees"] });

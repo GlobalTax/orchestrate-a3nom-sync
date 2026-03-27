@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
             supabaseClient,
             orquestBaseUrl,
             auth,
-            orquestCookie,
+            orquestCookie ?? null,
             serviceId,
             centro.codigo
           );
@@ -276,7 +276,7 @@ Deno.serve(async (req) => {
             supabaseClient,
             orquestBaseUrl,
             auth,
-            orquestCookie,
+            orquestCookie ?? null,
             startDate,
             endDate,
             serviceId,
@@ -299,7 +299,7 @@ Deno.serve(async (req) => {
           supabaseClient,
           orquestBaseUrl,
           auth,
-          orquestCookie,
+          orquestCookie ?? null,
           startDate,
           endDate,
           serviceIds[0],

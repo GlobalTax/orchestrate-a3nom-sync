@@ -48,7 +48,7 @@ export default function NotificationBell() {
             filter: `destinatario_user_id=eq.${user.id}`,
           },
           (payload) => {
-            setNotifications((prev) => [payload.new, ...prev]);
+            setNotifications((prev) => [payload.new as Notification, ...prev]);
             setUnreadCount((prev) => prev + 1);
             
             toast({
@@ -68,7 +68,7 @@ export default function NotificationBell() {
           },
           (payload) => {
             setNotifications((prev) =>
-              prev.map((notif) => (notif.id === payload.new.id ? payload.new : notif))
+              prev.map((notif) => (notif.id === (payload.new as Notification).id ? payload.new as Notification : notif))
             );
             if (payload.new.leida) {
               setUnreadCount((prev) => Math.max(0, prev - 1));
@@ -96,7 +96,7 @@ export default function NotificationBell() {
 
       if (error) throw error;
 
-      setNotifications(data || []);
+      setNotifications((data as unknown as Notification[]) || []);
       setUnreadCount(data?.filter((n) => !n.leida).length || 0);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
