@@ -7,6 +7,7 @@ import { useTableState } from "@/hooks/useTableState";
 import { ExportUtils } from "@/lib/exporters";
 import { Formatters } from "@/lib/formatters";
 import { PageHeader, LoadingSpinner, EmptyState } from "@/components/common";
+import { NewEmployeeDialog } from "@/components/NewEmployeeDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const Employees = () => {
   const navigate = useNavigate();
   const { isAdmin } = useUserRole();
   const [selectedCentro, setSelectedCentro] = useState<string>("all");
+  const [showNewEmployee, setShowNewEmployee] = useState(false);
   
   const { employees, isLoading } = useEmployees();
   const { centros } = useEmployeeCentros();
@@ -68,7 +70,7 @@ const Employees = () => {
           description="Gestiona tu equipo de trabajo"
           action={{
             label: "Nuevo Empleado",
-            onClick: () => {},
+            onClick: () => setShowNewEmployee(true),
             icon: <UserPlus className="h-4 w-4 mr-2" />,
           }}
         />
@@ -165,6 +167,8 @@ const Employees = () => {
             )}
           </CardContent>
         </Card>
+
+        <NewEmployeeDialog open={showNewEmployee} onOpenChange={setShowNewEmployee} centros={centros} />
       </div>
   );
 };

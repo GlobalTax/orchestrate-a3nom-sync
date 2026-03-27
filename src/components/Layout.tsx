@@ -73,6 +73,14 @@ const Layout = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Redirect non-admin users from admin routes
+  useEffect(() => {
+    if (session && !isAdmin && location.pathname.startsWith("/admin")) {
+      navigate("/dashboard");
+      toast.error("No tienes permisos para acceder a esta sección");
+    }
+  }, [session, isAdmin, location.pathname, navigate]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     queryClient.clear();
