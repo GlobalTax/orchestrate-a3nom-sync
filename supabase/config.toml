@@ -19,3 +19,7 @@ verify_jwt = false
 
 [functions.import_restaurants_csv]
 # Requires authentication - admin only
+
+[functions.sync_a3nom]
+# Sync workers and payroll data from A3Nom via IntegraLOOP API
+# Requires authentication - admin only
