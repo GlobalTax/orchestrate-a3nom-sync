@@ -32,12 +32,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Call orquest_proxy to test connection
+    // Call orquest_proxy to test connection (proxy auto-translates to /importer/api/v2/ for Bearer auth)
     const { data: proxyData, error: proxyError } = await supabaseClient.functions.invoke('orquest_proxy', {
       body: {
-        path: '/api/employees',
+        path: '/api/services',
         method: 'GET',
-        query: { serviceId: service_id },
         businessId: business_id || undefined
       }
     });
@@ -54,16 +53,16 @@ serve(async (req) => {
       );
     }
 
-    // Count employees returned
-    const employeesCount = Array.isArray(proxyData) ? proxyData.length : 0;
+    // Count services returned as proof of connection
+    const servicesCount = Array.isArray(proxyData) ? proxyData.length : 0;
 
-    console.log(`Successfully connected to Orquest service ${service_id}. Employees found: ${employeesCount}`);
+    console.log(`Successfully connected to Orquest. Services found: ${servicesCount}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `✅ Conexión exitosa con service ${service_id} (${employeesCount} empleados)`,
-        employees_count: employeesCount,
+      JSON.stringify({
+        success: true,
+        message: `Conexion exitosa con Orquest (${servicesCount} servicios encontrados)`,
+        services_count: servicesCount,
         service_id,
         business_id
       }),

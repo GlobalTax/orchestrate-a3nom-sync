@@ -87,11 +87,14 @@ Deno.serve(async (req) => {
     }
 
     // Get Orquest configuration
-    const orquestBaseUrl = Deno.env.get('ORQUEST_BASE_URL');
+    const orquestBaseUrl = Deno.env.get('ORQUEST_BASE_URL') || 'https://pre-mc.orquest.es';
+    const defaultBusinessId = Deno.env.get('ORQUEST_BUSINESS_ID') || 'MCDONALDS_ES';
+    const globalApiKey = Deno.env.get('ORQUEST_API_KEY');
+    // Legacy fallback - JSESSIONID cookie (deprecated, prefer API Key)
     const orquestCookie = Deno.env.get('ORQUEST_COOKIE_JSESSIONID');
 
-    if (!orquestBaseUrl || !orquestCookie) {
-      throw new Error('ORQUEST_BASE_URL and ORQUEST_COOKIE_JSESSIONID must be configured');
+    if (!globalApiKey && !orquestCookie) {
+      throw new Error('ORQUEST_API_KEY or ORQUEST_COOKIE_JSESSIONID must be configured');
     }
 
     // Fetch restaurant_services with centre info (N services per restaurant)
@@ -114,6 +117,21 @@ Deno.serve(async (req) => {
 
     if (rsError) throw rsError;
 
+    // Fetch franchisee API keys for Bearer token auth
+    const { data: franchisees } = await supabaseClient
+      .from('franchisees')
+      .select('id, orquest_api_key, orquest_business_id');
+
+    const franchiseeKeyMap = new Map<string, { apiKey: string; businessId: string }>();
+    for (const f of franchisees || []) {
+      if (f.orquest_api_key) {
+        franchiseeKeyMap.set(f.id, {
+          apiKey: f.orquest_api_key,
+          businessId: f.orquest_business_id || defaultBusinessId,
+        });
+      }
+    }
+
     // Group services by centro
     const centrosMap = new Map<string, {
       centro: any;
@@ -123,7 +141,7 @@ Deno.serve(async (req) => {
     for (const rs of restaurantServices || []) {
       const centreData = rs.centres as any;
       if (!centreData || Array.isArray(centreData) || !centreData.activo) continue;
-      
+
       const centroId = centreData.id;
       if (!centrosMap.has(centroId)) {
         centrosMap.set(centroId, {
@@ -170,6 +188,21 @@ Deno.serve(async (req) => {
         : 'No centres configured for Orquest sync');
     }
 
+    // Resolve auth credentials for each centro
+    const getAuthForCentro = (centro: any): { apiKey: string | null; businessId: string } => {
+      // Try franchisee API key first
+      if (centro.franchisee_id && franchiseeKeyMap.has(centro.franchisee_id)) {
+        const f = franchiseeKeyMap.get(centro.franchisee_id)!;
+        return { apiKey: f.apiKey, businessId: f.businessId };
+      }
+      // Fall back to global API key
+      if (globalApiKey) {
+        return { apiKey: globalApiKey, businessId: centro.orquest_business_id || defaultBusinessId };
+      }
+      // Legacy: no API key, will use JSESSIONID cookie
+      return { apiKey: null, businessId: centro.orquest_business_id || defaultBusinessId };
+    };
+
     console.log(`📍 Found ${centros.length} restaurant(s) to sync with ${centrosToSync.reduce((sum, c) => sum + c.serviceIds.length, 0)} total services`);
 
     // Create sync log entry
@@ -201,15 +234,17 @@ Deno.serve(async (req) => {
       console.log(`\n🏪 Syncing restaurant: ${centro.nombre} (${centro.codigo})`);
       console.log(`   Services: ${serviceIds.join(', ')}`);
 
+      const auth = getAuthForCentro(centro);
+
       if (sync_type === 'employees' || sync_type === 'full') {
         for (const serviceId of serviceIds) {
           console.log(`\n   📡 Syncing employees for service ${serviceId}...`);
           const result = await syncEmployees(
             supabaseClient,
             orquestBaseUrl,
+            auth,
             orquestCookie,
             serviceId,
-            centro.orquest_business_id,
             centro.codigo
           );
 
@@ -218,7 +253,7 @@ Deno.serve(async (req) => {
           totalUpdated += result.updated;
           totalErrors += result.errors;
           allErrors.push(...result.errorDetails);
-          
+
           console.log(`   ✅ Employees synced for service ${serviceId}: +${result.inserted} inserted, ~${result.updated} updated`);
         }
       }
@@ -229,11 +264,11 @@ Deno.serve(async (req) => {
           const result = await syncSchedules(
             supabaseClient,
             orquestBaseUrl,
+            auth,
             orquestCookie,
             startDate,
             endDate,
             serviceId,
-            centro.orquest_business_id,
             centro.codigo
           );
 
@@ -242,22 +277,21 @@ Deno.serve(async (req) => {
           totalUpdated += result.updated;
           totalErrors += result.errors;
           allErrors.push(...result.errorDetails);
-          
+
           console.log(`   ✅ Schedules synced for service ${serviceId}: +${result.inserted} inserted, ~${result.updated} updated`);
         }
       }
 
       if (sync_type === 'absences' || sync_type === 'full') {
         console.log(`\n   🏖️ Syncing absences for restaurant ${centro.codigo}...`);
-        // Get first service for absences sync (not filtered by service in Orquest)
         const result = await syncAbsences(
           supabaseClient,
           orquestBaseUrl,
+          auth,
           orquestCookie,
           startDate,
           endDate,
           serviceIds[0],
-          centro.orquest_business_id,
           centro.codigo
         );
         totalProcessed += result.total;
@@ -330,39 +364,75 @@ Deno.serve(async (req) => {
   }
 });
 
+// Build fetch headers based on available auth
+function buildOrquestHeaders(auth: { apiKey: string | null; businessId: string }, legacyCookie: string | null): HeadersInit {
+  if (auth.apiKey) {
+    return {
+      'Authorization': `Bearer ${auth.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+  }
+  if (legacyCookie) {
+    return {
+      'Cookie': `JSESSIONID=${legacyCookie}`,
+      'Content-Type': 'application/json',
+    };
+  }
+  throw new Error('No authentication available');
+}
+
+// Build Orquest API URL using the v2 importer API path pattern
+function buildOrquestUrl(
+  baseUrl: string,
+  auth: { apiKey: string | null; businessId: string },
+  resource: string,
+  queryParams?: Record<string, string>
+): string {
+  // Use /importer/api/v2/ path when using Bearer token (API Key)
+  const path = auth.apiKey
+    ? `${baseUrl}/importer/api/v2/businesses/${auth.businessId}/${resource}`
+    : `${baseUrl}/api/${resource}`;
+
+  if (queryParams && Object.keys(queryParams).length > 0) {
+    const qs = new URLSearchParams(queryParams).toString();
+    return `${path}?${qs}`;
+  }
+  return path;
+}
+
+async function fetchOrquest(url: string, headers: HeadersInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const response = await fetch(url, { headers, signal: controller.signal });
+  clearTimeout(timeoutId);
+  return response;
+}
+
 async function syncEmployees(
   supabase: any,
   baseUrl: string,
-  cookie: string,
+  auth: { apiKey: string | null; businessId: string },
+  legacyCookie: string | null,
   serviceId: string,
-  businessId: string | null,
   centroCode: string
 ): Promise<SyncResult> {
   const result: SyncResult = { total: 0, inserted: 0, updated: 0, errors: 0, errorDetails: [] };
 
   try {
-    // Build API URL with serviceId and optionally businessId
-    let apiUrl = `${baseUrl}/api/employees?serviceId=${serviceId}`;
-    if (businessId) {
-      apiUrl += `&businessId=${businessId}`;
-    }
+    const headers = buildOrquestHeaders(auth, legacyCookie);
+    const apiUrl = buildOrquestUrl(baseUrl, auth, 'employees', { serviceId });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Cookie': `JSESSIONID=${cookie}`,
-        'Content-Type': 'application/json',
-      },
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    const response = await fetchOrquest(apiUrl, headers);
 
     if (!response.ok) {
-      throw new Error(`Orquest API error: ${response.status}`);
+      throw new Error(`Orquest API error: ${response.status} - ${await response.text()}`);
     }
 
     const orquestEmployees = await response.json();
+
+    if (!Array.isArray(orquestEmployees)) {
+      throw new Error(`Unexpected Orquest response: expected array, got ${typeof orquestEmployees}`);
+    }
     result.total = orquestEmployees.length;
 
     console.log(`  Found ${result.total} employees for ${centroCode}`);
@@ -370,6 +440,13 @@ async function syncEmployees(
     // Process each employee
     for (const emp of orquestEmployees) {
       try {
+        // Check if employee exists to track insert vs update
+        const { data: existing } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('employee_id_orquest', emp.id)
+          .maybeSingle();
+
         const { error } = await supabase
           .from('employees')
           .upsert({
@@ -390,6 +467,8 @@ async function syncEmployees(
             id: emp.id,
             error: error.message,
           });
+        } else if (existing) {
+          result.updated++;
         } else {
           result.inserted++;
         }
@@ -419,38 +498,32 @@ async function syncEmployees(
 async function syncSchedules(
   supabase: any,
   baseUrl: string,
-  cookie: string,
+  auth: { apiKey: string | null; businessId: string },
+  legacyCookie: string | null,
   startDate: string,
   endDate: string,
   serviceId: string,
-  businessId: string | null,
   centroCode: string
 ): Promise<SyncResult> {
   const result: SyncResult = { total: 0, inserted: 0, updated: 0, errors: 0, errorDetails: [] };
 
   try {
-    // Build API URL with serviceId, businessId, and date range
-    let apiUrl = `${baseUrl}/api/assignments?startDate=${startDate}&endDate=${endDate}&serviceId=${serviceId}`;
-    if (businessId) {
-      apiUrl += `&businessId=${businessId}`;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Cookie': `JSESSIONID=${cookie}`,
-        'Content-Type': 'application/json',
-      },
-      signal: controller.signal,
+    const headers = buildOrquestHeaders(auth, legacyCookie);
+    const apiUrl = buildOrquestUrl(baseUrl, auth, 'assignments', {
+      startDate, endDate, serviceId,
     });
-    clearTimeout(timeoutId);
+
+    const response = await fetchOrquest(apiUrl, headers);
 
     if (!response.ok) {
-      throw new Error(`Orquest API error: ${response.status}`);
+      throw new Error(`Orquest API error: ${response.status} - ${await response.text()}`);
     }
 
     const assignments = await response.json();
+
+    if (!Array.isArray(assignments)) {
+      throw new Error(`Unexpected Orquest response: expected array, got ${typeof assignments}`);
+    }
     result.total = assignments.length;
 
     console.log(`  Found ${result.total} assignments for ${centroCode}`);
@@ -532,38 +605,32 @@ async function syncSchedules(
 async function syncAbsences(
   supabase: any,
   baseUrl: string,
-  cookie: string,
+  auth: { apiKey: string | null; businessId: string },
+  legacyCookie: string | null,
   startDate: string,
   endDate: string,
   serviceId: string,
-  businessId: string | null,
   centroCode: string
 ): Promise<SyncResult> {
   const result: SyncResult = { total: 0, inserted: 0, updated: 0, errors: 0, errorDetails: [] };
 
   try {
-    // Build API URL with serviceId, businessId, and date range
-    let apiUrl = `${baseUrl}/api/absences?startDate=${startDate}&endDate=${endDate}&serviceId=${serviceId}`;
-    if (businessId) {
-      apiUrl += `&businessId=${businessId}`;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Cookie': `JSESSIONID=${cookie}`,
-        'Content-Type': 'application/json',
-      },
-      signal: controller.signal,
+    const headers = buildOrquestHeaders(auth, legacyCookie);
+    const apiUrl = buildOrquestUrl(baseUrl, auth, 'absences', {
+      startDate, endDate, serviceId,
     });
-    clearTimeout(timeoutId);
+
+    const response = await fetchOrquest(apiUrl, headers);
 
     if (!response.ok) {
-      throw new Error(`Orquest API error: ${response.status}`);
+      throw new Error(`Orquest API error: ${response.status} - ${await response.text()}`);
     }
 
     const absences = await response.json();
+
+    if (!Array.isArray(absences)) {
+      throw new Error(`Unexpected Orquest response: expected array, got ${typeof absences}`);
+    }
     result.total = absences.length;
 
     console.log(`  Found ${result.total} absences for ${centroCode}`);
