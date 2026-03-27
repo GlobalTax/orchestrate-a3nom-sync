@@ -30,7 +30,7 @@ export function useOrquestServicesSync() {
         .limit(50);
 
       if (error) throw error;
-      return data as ServicesSyncLog[];
+      return (data as unknown) as ServicesSyncLog[];
     },
     refetchInterval: 10000, // Auto-refresh every 10s
   });
