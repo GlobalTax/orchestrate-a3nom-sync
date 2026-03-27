@@ -1,18 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 export interface OrquestProxyRequest {
   path: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   query?: Record<string, string>;
-  body?: any;
+  body?: Record<string, unknown>;
   franchiseeId?: string; // ID del franquiciado para autenticación multi-tenant
 }
 
 interface OrquestError {
   error: string;
   status?: number;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 const MAX_RETRIES = 3;
@@ -31,7 +32,7 @@ export async function callOrquestAPI<T>(
   retryCount = 0
 ): Promise<T> {
   try {
-    console.log(`Calling Orquest API: ${request.method || 'GET'} ${request.path}`);
+    logger.info("OrquestAPI", `Calling Orquest API: ${request.method || 'GET'} ${request.path}`);
     
     const { data, error } = await supabase.functions.invoke('orquest_proxy', {
       body: {
@@ -63,7 +64,7 @@ export async function callOrquestAPI<T>(
       if (orquestError.status && orquestError.status >= 500) {
         if (retryCount < MAX_RETRIES) {
           const retryDelay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
-          console.log(`Orquest API error ${orquestError.status}, retrying in ${retryDelay}ms...`);
+          logger.warn("OrquestAPI", `Orquest API error ${orquestError.status}, retrying in ${retryDelay}ms...`);
           
           toast.warning('Error temporal', {
             description: `Reintentando conexión con Orquest (${retryCount + 1}/${MAX_RETRIES})...`
@@ -86,7 +87,7 @@ export async function callOrquestAPI<T>(
     return data as T;
 
   } catch (error) {
-    console.error('Orquest API call failed:', error);
+    logger.error("OrquestAPI", "Orquest API call failed:", error);
     
     if (retryCount === 0) {
       toast.error('Error de conexión', {

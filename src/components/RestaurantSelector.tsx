@@ -4,6 +4,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { memo, useState } from "react";
+import { logger } from "@/lib/logger";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +28,7 @@ export const RestaurantSelector = memo(() => {
   const { isAdmin } = useUserRole();
   const [open, setOpen] = useState(false);
 
-  console.log('[RestaurantSelector] Rendering with:', {
+  logger.debug("RestaurantSelector", "Rendering with:", {
     restaurantsCount: restaurants.length,
     selectedRestaurant: selectedRestaurant?.nombre,
     isLoading: contextLoading,

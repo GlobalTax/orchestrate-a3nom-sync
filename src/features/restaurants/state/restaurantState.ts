@@ -5,7 +5,7 @@ export type DialogType = "restaurant" | "service" | "costCentre" | "franchisee" 
 export interface RestaurantState {
   activeTab: string;
   openDialog: DialogType;
-  editingItem: any | null;
+  editingItem: Record<string, unknown> | null;
   selectedCentro: string | null;
   searchQuery: string;
   filters: {
@@ -16,11 +16,11 @@ export interface RestaurantState {
 
 export type RestaurantAction =
   | { type: "SET_TAB"; payload: string }
-  | { type: "OPEN_DIALOG"; payload: { dialog: DialogType; item?: any } }
+  | { type: "OPEN_DIALOG"; payload: { dialog: DialogType; item?: Record<string, unknown> } }
   | { type: "CLOSE_DIALOG" }
   | { type: "SELECT_CENTRO"; payload: string | null }
   | { type: "SET_SEARCH"; payload: string }
-  | { type: "SET_FILTER"; payload: { key: keyof RestaurantState["filters"]; value: any } }
+  | { type: "SET_FILTER"; payload: { key: keyof RestaurantState["filters"]; value: string | boolean | null } }
   | { type: "CLEAR_FILTERS" }
   | { type: "RESET" };
 
@@ -110,7 +110,7 @@ export const useRestaurantState = (initialState?: Partial<RestaurantState>) => {
       dispatch({ type: "SET_TAB", payload: tab }),
 
     // Dialog management
-    openDialog: (dialog: DialogType, item?: any) =>
+    openDialog: (dialog: DialogType, item?: Record<string, unknown>) =>
       dispatch({ type: "OPEN_DIALOG", payload: { dialog, item } }),
     closeDialog: () => 
       dispatch({ type: "CLOSE_DIALOG" }),
@@ -124,7 +124,7 @@ export const useRestaurantState = (initialState?: Partial<RestaurantState>) => {
       dispatch({ type: "SET_SEARCH", payload: query }),
 
     // Filters
-    setFilter: (key: keyof RestaurantState["filters"], value: any) =>
+    setFilter: (key: keyof RestaurantState["filters"], value: string | boolean | null) =>
       dispatch({ type: "SET_FILTER", payload: { key, value } }),
     clearFilters: () =>
       dispatch({ type: "CLEAR_FILTERS" }),

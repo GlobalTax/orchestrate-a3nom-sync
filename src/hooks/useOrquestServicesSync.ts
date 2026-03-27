@@ -11,8 +11,8 @@ export interface ServicesSyncLog {
   franchisees_succeeded: number;
   franchisees_failed: number;
   total_services: number;
-  errors: any[];
-  results: any[];
+  errors: Array<{ message: string; franchiseeId?: string }>;
+  results: Array<{ franchiseeId: string; servicesCount: number }>;
   trigger_source: 'manual' | 'cron';
 }
 
@@ -52,7 +52,7 @@ export function useOrquestServicesSync() {
       queryClient.invalidateQueries({ queryKey: ['servicios_orquest'] });
       queryClient.invalidateQueries({ queryKey: ['orquest_services'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`Error al sincronizar servicios: ${error.message}`);
     }
   });

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import type { Franchisee, FranchiseeFormData } from "../types";
 
 export const useFranchisees = (isAdmin: boolean) => {
@@ -9,17 +10,17 @@ export const useFranchisees = (isAdmin: boolean) => {
   const { data: franchisees = [], isLoading } = useQuery({
     queryKey: ["franchisees"],
     queryFn: async () => {
-      console.info("[useFranchisees] Fetching franchisees");
+      logger.info("useFranchisees", "Fetching franchisees");
       const { data, error } = await supabase
         .from("franchisees")
         .select("*")
         .order("name");
       if (error) {
-        console.error("[useFranchisees] Error:", error);
+        logger.error("useFranchisees", "Error:", error);
         toast.error("Error al cargar franquiciados: " + error.message);
         throw error;
       }
-      console.info("[useFranchisees] Fetched count:", data?.length || 0);
+      logger.info("useFranchisees", "Fetched count:", data?.length || 0);
       return data as Franchisee[];
     },
     enabled: isAdmin,
@@ -53,8 +54,9 @@ export const useFranchisees = (isAdmin: boolean) => {
       queryClient.invalidateQueries({ queryKey: ["restaurants_with_franchisees"] });
       toast.success(editingId ? "Franquiciado actualizado" : "Franquiciado creado");
     },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Error: " + message);
     },
   });
 
@@ -71,8 +73,9 @@ export const useFranchisees = (isAdmin: boolean) => {
       queryClient.invalidateQueries({ queryKey: ["restaurants_with_franchisees"] });
       toast.success("Franquiciado eliminado");
     },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Error: " + message);
     },
   });
 

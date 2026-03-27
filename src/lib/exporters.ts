@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 export interface ExportColumn<T = any> {
   header: string;
@@ -67,8 +68,9 @@ export const ExportUtils = {
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
       XLSX.writeFile(workbook, filename);
       toast.success("Datos exportados correctamente");
-    } catch (error) {
-      console.error("Error exporting to Excel:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Exporters", "Error exporting to Excel:", message);
       toast.error("Error al exportar a Excel");
     }
   },

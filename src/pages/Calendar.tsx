@@ -29,7 +29,7 @@ interface CalendarEventData extends CalendarEvent {
   employeeId: string;
   employeeName: string;
   centro: string | null;
-  details: any;
+  details: Record<string, unknown>;
   resource?: { color: string };
 }
 

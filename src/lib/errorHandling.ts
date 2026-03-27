@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 /**
  * Custom application error class
@@ -23,7 +24,7 @@ export const ErrorHandler = {
    */
   handle(error: unknown, context?: string) {
     const prefix = context ? `[${context}]` : "";
-    console.error(`${prefix} Error:`, error);
+    logger.error("ErrorHandler", `${prefix} Error:`, error);
 
     if (error instanceof AppError) {
       toast.error(error.message);
@@ -89,7 +90,7 @@ export const ErrorHandler = {
       toast.success(successMessage);
       return result;
     } catch (error) {
-      console.error(error);
+      logger.error("ErrorHandler", "Error:", error);
       toast.error(errorMessage);
       return null;
     }
@@ -121,7 +122,7 @@ export async function retryWithBackoff<T>(
       
       if (i < maxRetries - 1) {
         const delay = initialDelay * Math.pow(2, i);
-        console.log(`Retry ${i + 1}/${maxRetries} after ${delay}ms...`);
+        logger.info("ErrorHandler", `Retry ${i + 1}/${maxRetries} after ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }

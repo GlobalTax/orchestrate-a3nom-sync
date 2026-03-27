@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Info } from "lucide-react";
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/logger";
 import { getServicesHybrid } from "@/services/orquest";
 import type { RestaurantFormData, Franchisee } from "../../types";
 
@@ -40,8 +41,9 @@ export const RestaurantDialog = ({
         .then((services) => {
           setOrquestServices(services as Array<{ id: string; nombre?: string; name?: string }> || []);
         })
-        .catch((err) => {
-          console.error("Error cargando services:", err);
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          logger.error("RestaurantDialog", "Error cargando services:", message);
           setOrquestServices([]);
         })
         .finally(() => {

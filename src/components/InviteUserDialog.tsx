@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Copy, CheckCircle2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface InviteUserDialogProps {
   open: boolean;
@@ -56,9 +57,10 @@ export const InviteUserDialog = ({ open, onOpenChange, franchisees }: InviteUser
 
       setInviteLink(data.inviteLink);
       toast.success("Invitación creada correctamente");
-    } catch (error: any) {
-      console.error("Error al crear invitación:", error);
-      toast.error(error.message || "Error al crear la invitación");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("InviteUserDialog", "Error al crear invitación:", message);
+      toast.error(message || "Error al crear la invitación");
     } finally {
       setLoading(false);
     }

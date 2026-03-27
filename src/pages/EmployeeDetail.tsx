@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { logger } from "@/lib/logger";
 
 interface Employee {
   id: string;
@@ -127,8 +128,8 @@ const EmployeeDetail = () => {
 
       if (payError) throw payError;
       setPayrolls(payData || []);
-    } catch (error: any) {
-      console.error("Error fetching employee data:", error);
+    } catch (error: unknown) {
+      logger.error("EmployeeDetail", "Error fetching employee data:", error);
       toast.error("Error al cargar datos del empleado");
     } finally {
       setLoading(false);
@@ -150,9 +151,10 @@ const EmployeeDetail = () => {
 
       toast.success("Empleado eliminado correctamente");
       navigate("/employees");
-    } catch (error: any) {
-      console.error("Error deleting employee:", error);
-      toast.error("Error al eliminar empleado: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("EmployeeDetail", "Error deleting employee:", error);
+      toast.error("Error al eliminar empleado: " + message);
     }
   };
 

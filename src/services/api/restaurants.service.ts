@@ -1,12 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { RestaurantWithFranchisee, RestaurantFormData } from "@/features/restaurants/types";
+import { logger } from "@/lib/logger";
 
 export class RestaurantsService {
   static async getAll(): Promise<RestaurantWithFranchisee[]> {
     const { data, error } = await supabase.rpc("get_restaurants_with_franchisees");
     
     if (error) {
-      console.error("[RestaurantsService] Error:", error);
+      logger.error("RestaurantsService", "Error:", error);
       throw error;
     }
 

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 export interface Restaurant {
   id: string;
@@ -59,14 +60,14 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
     queryFn: async () => {
       const userType = isAdmin ? 'ADMIN' : 'GESTOR';
       
-      console.log(`[RestaurantContext] 🔍 Fetching as ${userType}`, {
+      logger.info('RestaurantContext', `Fetching as ${userType}`, {
         isAdmin,
         centros,
         centrosCount: centros.length
       });
 
       if (!isAdmin && centros.length === 0) {
-        console.warn('[RestaurantContext] Gestor sin centros asignados, retornando array vacío');
+        logger.warn('RestaurantContext', 'Gestor sin centros asignados, retornando array vacio');
         return [];
       }
 
@@ -82,9 +83,9 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
       const { count: totalDb, error: countError } = await countQuery;
 
       if (countError) {
-        console.error('[RestaurantContext] ❌ Error counting centres:', countError);
+        logger.error('RestaurantContext', 'Error counting centres', countError);
       } else {
-        console.log(`[RestaurantContext] 📊 Total en BD (${showInactive ? 'todos' : 'solo activos'}): ${totalDb}`);
+        logger.info('RestaurantContext', `Total en BD (${showInactive ? 'todos' : 'solo activos'}): ${totalDb}`);
       }
 
       // PASO 2: Ejecutar query principal
@@ -103,14 +104,14 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (!isAdmin && normalizados.length > 0) {
-        console.log(`[RestaurantContext] 🔒 Aplicando filtro gestor con centros:`, normalizados);
+        logger.info('RestaurantContext', 'Aplicando filtro gestor con centros', normalizados);
         query = query.in('codigo', normalizados);
       }
 
       const { data, error } = await query.order('nombre');
       
       if (error) {
-        console.error('[RestaurantContext] ❌ Error fetching centres:', error);
+        logger.error('RestaurantContext', 'Error fetching centres', error);
         toast.error('Error al cargar restaurantes', {
           description: error.message
         });
@@ -118,7 +119,7 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const rawCount = data?.length || 0;
-      console.log(`[RestaurantContext] 📦 Query devolvió ${rawCount} filas (antes de filtro manual)`);
+      logger.info('RestaurantContext', `Query devolvio ${rawCount} filas (antes de filtro manual)`);
 
       // PASO 3: Mapear datos
       let allRestaurants = (data || []).map((c) => ({
@@ -154,10 +155,10 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
         );
         
         const afterFilterCount = allRestaurants.length;
-        console.log(`[RestaurantContext] 🔍 Filtro manual: ${beforeFilterCount} → ${afterFilterCount} restaurantes`);
+        logger.info('RestaurantContext', `Filtro manual: ${beforeFilterCount} -> ${afterFilterCount} restaurantes`);
         
         if (beforeFilterCount !== afterFilterCount) {
-          console.warn(`[RestaurantContext] ⚠️ El filtro manual eliminó ${beforeFilterCount - afterFilterCount} restaurantes`);
+          logger.warn('RestaurantContext', `El filtro manual elimino ${beforeFilterCount - afterFilterCount} restaurantes`);
         }
       }
 
@@ -166,9 +167,9 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
       const filterStatus = showInactive ? 'todos (activos + inactivos)' : 'solo activos';
 
       if (isAdmin) {
-        console.log(`[RestaurantContext] Admin ve ${finalCount} de ${totalDb} restaurantes (${filterStatus})`);
+        logger.info('RestaurantContext', `Admin ve ${finalCount} de ${totalDb} restaurantes (${filterStatus})`);
       } else {
-        console.log(`[RestaurantContext] Gestor ve ${finalCount} restaurantes (${filterStatus}, filtrado por ${centros.length} centros)`);
+        logger.info('RestaurantContext', `Gestor ve ${finalCount} restaurantes (${filterStatus}, filtrado por ${centros.length} centros)`);
       }
       return allRestaurants;
     },

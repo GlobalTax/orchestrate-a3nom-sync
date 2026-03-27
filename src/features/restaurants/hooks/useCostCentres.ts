@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import type { CostCentre, CostCentreFormData } from "../types";
 
 export const useCostCentres = (isAdmin: boolean) => {
@@ -20,7 +21,7 @@ export const useCostCentres = (isAdmin: boolean) => {
         `)
         .order("created_at", { ascending: false });
       if (error) {
-        console.error("[useCostCentres] Error:", error);
+        logger.error("useCostCentres", "Error:", error);
         toast.error("Error al cargar centros de coste: " + error.message);
         throw error;
       }
@@ -49,8 +50,9 @@ export const useCostCentres = (isAdmin: boolean) => {
       queryClient.invalidateQueries({ queryKey: ["cost_centres"] });
       toast.success(editingId ? "Centro de coste actualizado" : "Centro de coste creado");
     },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Error: " + message);
     },
   });
 
@@ -68,8 +70,9 @@ export const useCostCentres = (isAdmin: boolean) => {
       queryClient.invalidateQueries({ queryKey: ["cost_centres"] });
       toast.success("Estado actualizado");
     },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Error: " + message);
     },
   });
 

@@ -25,7 +25,7 @@ interface SyncLog {
   inserted_rows: number;
   updated_rows: number;
   error_rows: number;
-  errors: any[];
+  errors: Array<{ message: string }>;
   trigger_source: string;
 }
 
@@ -93,13 +93,13 @@ export default function Sync() {
       toast.success('Sincronización iniciada correctamente');
       queryClient.invalidateQueries({ queryKey: ['sync_logs'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`Error al iniciar sincronización: ${error.message}`);
     },
   });
 
   const handleExecuteSync = () => {
-    const params: any = {
+    const params: Record<string, string | number> = {
       sync_type: syncType,
       days_back: parseInt(daysBack),
     };
@@ -249,7 +249,7 @@ export default function Sync() {
 
               <div className="space-y-2">
                 <Label htmlFor="syncType">Tipo de Sincronización</Label>
-                <Select value={syncType} onValueChange={(val: any) => setSyncType(val)}>
+                <Select value={syncType} onValueChange={(val: string) => setSyncType(val as typeof syncType)}>
                   <SelectTrigger id="syncType">
                     <SelectValue />
                   </SelectTrigger>
@@ -378,7 +378,7 @@ export default function Sync() {
                             <div className="p-4 space-y-2">
                               <h4 className="font-semibold text-sm">Detalles de Errores:</h4>
                               <div className="space-y-1 max-h-60 overflow-y-auto">
-                                {log.errors.map((error: any, idx: number) => (
+                                {log.errors.map((error: { type?: string; id?: string; error?: string; message: string }, idx: number) => (
                                   <div key={idx} className="text-xs bg-destructive/10 p-2 rounded">
                                     <span className="font-medium">{error.type}</span>
                                     {error.id && <span className="text-muted-foreground"> (ID: {error.id})</span>}

@@ -7,7 +7,7 @@ import { Loader2, Plus, Edit, X, Server, Info } from "lucide-react";
 import type { RestaurantService } from "../types";
 
 interface ServicesTabProps {
-  servicesByRestaurant: Record<string, { restaurant: any; services: RestaurantService[] }>;
+  servicesByRestaurant: Record<string, { restaurant: { codigo: string; nombre: string }; services: RestaurantService[] }>;
   isLoading: boolean;
   onEdit: (service: RestaurantService) => void;
   onToggleActive: (params: { id: string; activo: boolean }) => void;
