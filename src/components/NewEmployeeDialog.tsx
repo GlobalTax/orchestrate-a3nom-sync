@@ -43,7 +43,7 @@ export const NewEmployeeDialog = ({ open, onOpenChange, centros }: NewEmployeeDi
   const centroValue = watch("centro");
 
   const mutation = useMutation({
-    mutationFn: (data: EmployeeInput) => EmployeesService.create(data),
+    mutationFn: (data: EmployeeInput) => EmployeesService.create(data as unknown as Omit<Employee, "id">),
     onSuccess: () => {
       toast.success("Empleado creado correctamente");
       queryClient.invalidateQueries({ queryKey: ["employees"] });
