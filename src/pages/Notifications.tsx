@@ -9,6 +9,20 @@ import { Loader2, CheckCircle2, XCircle, AlertCircle, Info } from "lucide-react"
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+interface Notification {
+  id: string;
+  titulo: string;
+  mensaje: string;
+  severidad: string;
+  tipo: string;
+  centro: string | null;
+  leida: boolean;
+  leida_at: string | null;
+  detalles: Record<string, unknown> | null;
+  created_at: string;
+  destinatario_user_id: string;
+}
+
 const SEVERITY_CONFIG = {
   baja: { color: 'bg-blue-100 text-blue-800', icon: Info },
   media: { color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle },
@@ -18,10 +32,10 @@ const SEVERITY_CONFIG = {
 
 export default function Notifications() {
   const { toast } = useToast();
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterLeida, setFilterLeida] = useState<'all' | 'leida' | 'no_leida'>('all');
-  const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
@@ -61,10 +75,11 @@ export default function Notifications() {
 
       if (error) throw error;
       setNotifications(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -84,10 +99,11 @@ export default function Notifications() {
       setNotifications((prev) =>
         prev.map((notif) => (notif.id === id ? { ...notif, leida: true, leida_at: new Date().toISOString() } : notif))
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     }
@@ -105,10 +121,11 @@ export default function Notifications() {
       setNotifications((prev) =>
         prev.map((notif) => (notif.id === id ? { ...notif, leida: false, leida_at: null } : notif))
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     }
@@ -130,16 +147,17 @@ export default function Notifications() {
         title: "Notificaciones marcadas",
         description: "Todas las notificaciones se han marcado como leídas",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     }
   };
 
-  const handleViewDetails = (notification: any) => {
+  const handleViewDetails = (notification: Notification) => {
     setSelectedNotification(notification);
     setDetailOpen(true);
     if (!notification.leida) {

@@ -1,5 +1,6 @@
 import { callOrquestAPI } from "./base";
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
 
 /**
  * Get services from Orquest (real-time)
@@ -29,7 +30,7 @@ export async function getServicesHybrid(franchiseeId?: string) {
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.warn('Error al leer caché de servicios:', error);
+      logger.warn("OrquestServices", "Error al leer caché de servicios:", error);
       // Fall back to real-time API
       return getServices(franchiseeId);
     }
@@ -40,7 +41,7 @@ export async function getServicesHybrid(franchiseeId?: string) {
       const hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
 
       if (hoursSinceUpdate < CACHE_VALIDITY_HOURS) {
-        console.log(`✅ Usando caché de servicios (actualizado hace ${Math.round(hoursSinceUpdate)} horas)`);
+        logger.info("OrquestServices", `Usando caché de servicios (actualizado hace ${Math.round(hoursSinceUpdate)} horas)`);
         // Transform to match Orquest API format
         return cachedServices.map(service => ({
           id: service.id,
@@ -48,7 +49,7 @@ export async function getServicesHybrid(franchiseeId?: string) {
           timeZone: service.zona_horaria,
           lat: service.latitud,
           lon: service.longitud,
-          ...(typeof service.datos_completos === 'object' && service.datos_completos !== null ? service.datos_completos as Record<string, any> : {})
+          ...(typeof service.datos_completos === 'object' && service.datos_completos !== null ? service.datos_completos as Record<string, unknown> : {})
         }));
       }
     }
@@ -66,7 +67,7 @@ export async function getServicesHybrid(franchiseeId?: string) {
 
     return freshServices;
   } catch (error) {
-    console.error('Error en getServicesHybrid:', error);
+    logger.error("OrquestServices", "Error en getServicesHybrid:", error);
     // Last resort: try real-time API
     return getServices(franchiseeId);
   }
@@ -99,10 +100,10 @@ export async function updateServicesCache(services?: Record<string, unknown>[]) 
       throw error;
     }
 
-    console.log(`✅ Caché actualizado: ${servicesToUpsert.length} servicios`);
+    logger.info("OrquestServices", `Caché actualizado: ${servicesToUpsert.length} servicios`);
     return { success: true, count: servicesToUpsert.length };
   } catch (error) {
-    console.error('Error al actualizar caché de servicios:', error);
+    logger.error("OrquestServices", "Error al actualizar caché de servicios:", error);
     throw error;
   }
 }

@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { ImportService, ImportResult } from "@/services/api/import.service";
 import { AlertCircle, CheckCircle2, Upload, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { logger } from "@/lib/logger";
 
 export default function RestaurantAutoImport() {
   const [importing, setImporting] = useState(false);
@@ -29,15 +30,16 @@ export default function RestaurantAutoImport() {
       clearInterval(progressInterval);
       setProgress(100);
       setResult(importResult);
-    } catch (error: any) {
-      console.error('Import error:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("RestaurantAutoImport", "Import error:", error);
       setResult({
         success: false,
         total: 0,
         inserted: 0,
         updated: 0,
         errors: 1,
-        message: error.message,
+        message,
       });
     } finally {
       setImporting(false);

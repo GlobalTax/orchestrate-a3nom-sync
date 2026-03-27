@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { logger } from "@/lib/logger";
 
 export default function NotificationBell() {
   const navigate = useNavigate();
@@ -86,8 +87,9 @@ export default function NotificationBell() {
 
       setNotifications(data || []);
       setUnreadCount(data?.filter((n) => !n.leida).length || 0);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("NotificationBell", "Error fetching notifications:", message);
     }
   };
 
@@ -104,8 +106,9 @@ export default function NotificationBell() {
         prev.map((notif) => (notif.id === id ? { ...notif, leida: true } : notif))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Error marking as read:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("NotificationBell", "Error marking as read:", message);
     }
   };
 

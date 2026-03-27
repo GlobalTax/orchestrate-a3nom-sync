@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,9 +43,9 @@ interface AuditLog {
   action: "INSERT" | "UPDATE" | "DELETE";
   table_name: string;
   row_id: string | null;
-  old_data: any;
-  new_data: any;
-  diff: any;
+  old_data: Record<string, unknown>;
+  new_data: Record<string, unknown>;
+  diff: Record<string, { old: unknown; new: unknown }>;
   created_at: string;
 }
 
@@ -134,8 +135,8 @@ export default function Audit() {
         uniqueUsers,
         uniqueTables,
       });
-    } catch (error: any) {
-      console.error("Error fetching audit logs:", error);
+    } catch (error: unknown) {
+      logger.error("Audit", "Error fetching audit logs:", error);
       toast.error("Error al cargar los logs de auditoría");
     } finally {
       setLoading(false);
@@ -149,7 +150,7 @@ export default function Audit() {
   }, [isAdmin, filterUser, filterTable, filterAction, filterDateFrom, filterDateTo]);
 
   const getActionBadge = (action: string) => {
-    const variants: Record<string, any> = {
+    const variants: Record<string, { variant: string; color: string }> = {
       INSERT: { variant: "default", color: "bg-green-500" },
       UPDATE: { variant: "secondary", color: "bg-blue-500" },
       DELETE: { variant: "destructive", color: "bg-red-500" },
@@ -442,7 +443,7 @@ export default function Audit() {
                   <div>
                     <Label className="text-base">Cambios Realizados</Label>
                     <div className="mt-2 space-y-2">
-                      {Object.entries(selectedLog.diff).map(([key, value]: [string, any]) => (
+                      {Object.entries(selectedLog.diff).map(([key, value]) => (
                         <Card key={key}>
                           <CardHeader className="pb-3">
                             <CardTitle className="text-sm font-medium">{key}</CardTitle>

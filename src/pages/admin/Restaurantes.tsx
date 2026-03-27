@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Building2, Plus, Info, RefreshCw, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
 
 // Custom hooks
 import { useRestaurants } from "@/features/restaurants/hooks/useRestaurants";
@@ -357,10 +358,11 @@ const Restaurantes = () => {
       // Refrescar caché de services
       queryClient.invalidateQueries({ queryKey: ['restaurant_services'] });
       queryClient.invalidateQueries({ queryKey: ['orquest_services'] });
-    } catch (err: any) {
-      console.error('Error sincronizando services:', err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      logger.error("Restaurantes", "Error sincronizando services:", err);
       toast.error('Error al sincronizar services', {
-        description: err.message || 'Verifica la conexión con Orquest'
+        description: message || 'Verifica la conexión con Orquest'
       });
     } finally {
       setIsSyncingOrquest(false);

@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 
 const orquestSchema = z.object({
@@ -34,7 +35,7 @@ type EmailFormData = z.infer<typeof emailSchema>;
 export default function Settings() {
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [services, setServices] = useState<any[]>([]);
+  const [services, setServices] = useState<Array<{ id: string; nombre?: string; name?: string }>>([]);
   const [savingOrquest, setSavingOrquest] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -69,7 +70,7 @@ export default function Settings() {
       .single();
 
     if (error) {
-      console.error('Error loading settings:', error);
+      logger.error("Settings", "Error loading settings:", error);
       return;
     }
 
@@ -117,9 +118,10 @@ export default function Settings() {
         setConnectionStatus('error');
         toast.error(data.message);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
       setConnectionStatus('error');
-      toast.error(`Error: ${error.message}`);
+      toast.error(`Error: ${message}`);
     } finally {
       setTestingConnection(false);
     }
@@ -148,8 +150,9 @@ export default function Settings() {
       }
 
       toast.success('Configuración de Orquest guardada correctamente');
-    } catch (error: any) {
-      toast.error(`Error al guardar: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Error al guardar: ${message}`);
     } finally {
       setSavingOrquest(false);
     }
@@ -170,8 +173,9 @@ export default function Settings() {
       if (error) throw error;
 
       toast.success('Configuración de email guardada correctamente');
-    } catch (error: any) {
-      toast.error(`Error al guardar: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Error al guardar: ${message}`);
     } finally {
       setSavingEmail(false);
     }
@@ -282,7 +286,7 @@ export default function Settings() {
                           <SelectValue placeholder="Selecciona un servicio" />
                         </SelectTrigger>
                         <SelectContent>
-                          {services.map((service: any) => (
+                          {services.map((service) => (
                             <SelectItem key={service.id} value={service.id}>
                               {service.nombre || service.name || service.id}
                             </SelectItem>

@@ -11,7 +11,7 @@ export interface DQIssue {
   periodo_inicio: string;
   periodo_fin: string;
   centro: string | null;
-  detalle: any;
+  detalle: Record<string, unknown>;
   resuelto: boolean;
   resuelto_por: string | null;
   resuelto_at: string | null;

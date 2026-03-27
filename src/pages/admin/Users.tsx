@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Shield, UserCog, Search, UserPlus } from "lucide-react";
 import { InviteUserDialog } from "@/components/InviteUserDialog";
+import { logger } from "@/lib/logger";
 
 interface UserWithRoles {
   id: string;
@@ -60,8 +61,9 @@ const Users = () => {
 
       if (error) throw error;
       setFranchisees(data || []);
-    } catch (error: any) {
-      console.error("Error al cargar franquiciados:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Users", "Error al cargar franquiciados:", message);
     }
   };
 
@@ -108,8 +110,10 @@ const Users = () => {
       });
 
       setUsers(usersWithRoles);
-    } catch (error: any) {
-      toast.error("Error al cargar usuarios: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Users", "Error al cargar usuarios:", message);
+      toast.error("Error al cargar usuarios: " + message);
     } finally {
       setLoading(false);
     }
@@ -160,8 +164,10 @@ const Users = () => {
       setNewRole("");
       setNewCentro("");
       setNewFranchiseeId("");
-    } catch (error: any) {
-      toast.error("Error al actualizar rol: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Users", "Error al actualizar rol:", message);
+      toast.error("Error al actualizar rol: " + message);
     }
   };
 
@@ -177,8 +183,10 @@ const Users = () => {
 
       toast.success("Rol eliminado correctamente");
       fetchUsers();
-    } catch (error: any) {
-      toast.error("Error al eliminar rol: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Users", "Error al eliminar rol:", message);
+      toast.error("Error al eliminar rol: " + message);
     }
   };
 

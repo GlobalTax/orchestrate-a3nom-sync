@@ -4,6 +4,13 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 
+interface DailyHoursRow {
+  fecha: string;
+  horas_planificadas: number;
+  horas_trabajadas: number;
+  horas_ausencia: number;
+}
+
 interface ServiceMetrics {
   service_id: string;
   service_descripcion: string;
@@ -59,7 +66,7 @@ export const useDashboardMetrics = (
         p_centro: centroParam,
       });
       if (error) throw error;
-      return data?.map((d: any) => ({
+      return data?.map((d: DailyHoursRow) => ({
         fecha: format(new Date(d.fecha), "dd/MM", { locale: es }),
         horas_planificadas: Number(d.horas_planificadas) || 0,
         horas_trabajadas: Number(d.horas_trabajadas) || 0,

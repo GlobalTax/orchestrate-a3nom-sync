@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import type { RestaurantWithFranchisee } from "../types";
 
 export const useRestaurantsDirect = (showInactive: boolean) => {
   const { data: restaurants = [], isLoading, error } = useQuery({
     queryKey: ["restaurants_direct", showInactive],
     queryFn: async () => {
-      console.info("[useRestaurantsDirect] 🔍 Fetching via DIRECT query to centres");
+      logger.info("useRestaurantsDirect", "Fetching via DIRECT query to centres");
       
       // Contar total en BD
       let countQuery = supabase
@@ -21,9 +22,9 @@ export const useRestaurantsDirect = (showInactive: boolean) => {
       const { count: totalDb, error: countError } = await countQuery;
       
       if (countError) {
-        console.error("[useRestaurantsDirect] ❌ Error counting:", countError);
+        logger.error("useRestaurantsDirect", "Error counting:", countError);
       } else {
-        console.info(`[useRestaurantsDirect] 📊 Total en BD (${showInactive ? 'todos' : 'solo activos'}): ${totalDb}`);
+        logger.info("useRestaurantsDirect", `Total en BD (${showInactive ? 'todos' : 'solo activos'}): ${totalDb}`);
       }
 
       // Query principal SIN filtro por centros (admin ve todo)
@@ -42,14 +43,14 @@ export const useRestaurantsDirect = (showInactive: boolean) => {
 
       // 🆕 VERIFICAR AUTENTICACIÓN
       const { data: { user } } = await supabase.auth.getUser();
-      console.info(`[useRestaurantsDirect] 👤 Usuario autenticado:`, {
+      logger.info("useRestaurantsDirect", "Usuario autenticado:", {
         id: user?.id,
         email: user?.email,
         authenticated: !!user
       });
 
       if (!user) {
-        console.error(`[useRestaurantsDirect] 🚨 Usuario NO autenticado, el query podría fallar`);
+        logger.error("useRestaurantsDirect", "Usuario NO autenticado, el query podría fallar");
         toast.error('⚠️ Sesión expirada', {
           description: 'Por favor, vuelve a iniciar sesión'
         });
@@ -59,7 +60,7 @@ export const useRestaurantsDirect = (showInactive: boolean) => {
       const { data, error } = await query.order('nombre');
       
       if (error) {
-        console.error("[useRestaurantsDirect] ❌ Error:", error);
+        logger.error("useRestaurantsDirect", "Error:", error);
         toast.error("Error al cargar restaurantes (Direct)", {
           description: error.message
         });
@@ -67,16 +68,16 @@ export const useRestaurantsDirect = (showInactive: boolean) => {
       }
 
       const fetchedCount = data?.length || 0;
-      console.info(`[useRestaurantsDirect] ✅ Query devolvió: ${fetchedCount} restaurantes`);
-      
-      // 🆕 LOGS DETALLADOS
-      console.info(`[useRestaurantsDirect] 📋 Primeros 5 registros:`, data?.slice(0, 5));
-      console.info(`[useRestaurantsDirect] 🔑 IDs únicos:`, [...new Set(data?.map(r => r.id))].length);
-      console.info(`[useRestaurantsDirect] 📊 Comparación: fetchedCount=${fetchedCount}, totalDb=${totalDb}`);
+      logger.info("useRestaurantsDirect", `Query devolvió: ${fetchedCount} restaurantes`);
+
+      // LOGS DETALLADOS
+      logger.debug("useRestaurantsDirect", "Primeros 5 registros:", data?.slice(0, 5));
+      logger.debug("useRestaurantsDirect", "IDs únicos:", [...new Set(data?.map(r => r.id))].length);
+      logger.info("useRestaurantsDirect", `Comparación: fetchedCount=${fetchedCount}, totalDb=${totalDb}`);
       
       // 🆕 ALERTA SI HAY DISCREPANCIA CON EL CONTEO DE BD
       if (fetchedCount !== totalDb) {
-        console.error(`[useRestaurantsDirect] 🚨 DISCREPANCIA: Query devolvió ${fetchedCount} pero BD tiene ${totalDb}`);
+        logger.error("useRestaurantsDirect", `DISCREPANCIA: Query devolvió ${fetchedCount} pero BD tiene ${totalDb}`);
         toast.error(`🚨 Discrepancia de datos`, {
           description: `Query devolvió ${fetchedCount} registros pero la BD reporta ${totalDb}. Puede ser un problema de cache.`,
           duration: 10000,
