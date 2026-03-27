@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import type { RestaurantService, ServiceFormData } from "../types";
 
 export const useServices = (isAdmin: boolean) => {
@@ -20,7 +21,7 @@ export const useServices = (isAdmin: boolean) => {
         `)
         .order("created_at", { ascending: false });
       if (error) {
-        console.error("[useServices] Error:", error);
+        logger.error("useServices", "Error:", error);
         toast.error("Error al cargar servicios: " + error.message);
         throw error;
       }
@@ -39,7 +40,7 @@ export const useServices = (isAdmin: boolean) => {
         .eq("activo", true);
       
       if (error) {
-        console.error("[useServices] Error fetching count:", error);
+        logger.error("useServices", "Error fetching count:", error);
         toast.error("Error al contar servicios: " + error.message);
         throw error;
       }
@@ -73,8 +74,9 @@ export const useServices = (isAdmin: boolean) => {
       queryClient.invalidateQueries({ queryKey: ["services_count"] });
       toast.success(editingId ? "Service actualizado" : "Service creado");
     },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Error: " + message);
     },
   });
 
@@ -91,8 +93,9 @@ export const useServices = (isAdmin: boolean) => {
       queryClient.invalidateQueries({ queryKey: ["services_count"] });
       toast.success("Estado actualizado");
     },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Error: " + message);
     },
   });
 
@@ -107,7 +110,7 @@ export const useServices = (isAdmin: boolean) => {
     }
     acc[key].services.push(service);
     return acc;
-  }, {} as Record<string, { restaurant: any; services: RestaurantService[] }>);
+  }, {} as Record<string, { restaurant: { codigo: string; nombre: string }; services: RestaurantService[] }>);
 
   return {
     services,

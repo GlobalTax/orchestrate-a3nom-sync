@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 export interface ImportStep {
   current: "upload" | "mapping" | "preview" | "importing" | "complete";
@@ -18,12 +19,12 @@ export interface ValidationError {
   row: number;
   field: string;
   message: string;
-  value?: any;
+  value?: unknown;
   isCritical?: boolean;
 }
 
 export interface UseFileImportOptions {
-  onDataParsed?: (data: any[], headers: string[]) => void;
+  onDataParsed?: (data: Record<string, unknown>[], headers: string[]) => void;
   onValidationComplete?: (errors: ValidationError[]) => void;
   onImportComplete?: (stats: ImportStats) => void;
 }
@@ -34,7 +35,7 @@ const ALLOWED_EXTENSIONS = ['.xlsx', '.xls', '.csv'];
 export const useFileImport = (options: UseFileImportOptions = {}) => {
   const [step, setStep] = useState<ImportStep["current"]>("upload");
   const [file, setFile] = useState<File | null>(null);
-  const [rawData, setRawData] = useState<any[]>([]);
+  const [rawData, setRawData] = useState<Record<string, unknown>[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const [stats, setStats] = useState<ImportStats>({
@@ -81,17 +82,18 @@ export const useFileImport = (options: UseFileImportOptions = {}) => {
       
       toast.success(`Archivo cargado: ${jsonData.length} filas detectadas`);
       return { data: jsonData, headers: parsedHeaders };
-    } catch (error: any) {
-      console.error("Error parsing file:", error);
-      toast.error("Error al procesar el archivo: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("useFileImport", "Error parsing file:", message);
+      toast.error("Error al procesar el archivo: " + message);
       throw error;
     }
   }, [options]);
 
   const validateData = useCallback((
-    data: any[],
+    data: Record<string, unknown>[],
     mapping: Record<string, string>,
-    validationFn: (row: any, index: number) => ValidationError[]
+    validationFn: (row: Record<string, unknown>, index: number) => ValidationError[]
   ) => {
     const errors: ValidationError[] = [];
 

@@ -38,7 +38,7 @@ interface SyncLog {
   inserted_rows: number;
   updated_rows: number;
   error_rows: number;
-  errors: any[];
+  errors: Array<{ message: string }>;
   trigger_source: string;
 }
 
@@ -108,7 +108,7 @@ export default function OrquestSync() {
       toast.success('Sincronización de datos operativos iniciada');
       queryClient.invalidateQueries({ queryKey: ['sync_logs'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`Error: ${error.message}`);
     },
   });
@@ -128,7 +128,7 @@ export default function OrquestSync() {
   });
 
   const handleExecuteOperationalSync = () => {
-    const params: any = {
+    const params: Record<string, string | number> = {
       sync_type: syncType,
       days_back: parseInt(daysBack),
     };
@@ -317,7 +317,7 @@ export default function OrquestSync() {
 
             <div className="space-y-2">
               <Label htmlFor="syncType">Tipo</Label>
-              <Select value={syncType} onValueChange={(val: any) => setSyncType(val)}>
+              <Select value={syncType} onValueChange={(val: string) => setSyncType(val as typeof syncType)}>
                 <SelectTrigger id="syncType">
                   <SelectValue />
                 </SelectTrigger>
@@ -447,7 +447,7 @@ export default function OrquestSync() {
                               <div className="p-4 space-y-2">
                                 <h4 className="font-semibold text-sm">Detalles de Errores:</h4>
                                 <div className="space-y-1 max-h-60 overflow-y-auto">
-                                  {log.errors.map((error: any, idx: number) => (
+                                  {log.errors.map((error: { franchisee?: string; error?: string; message: string }, idx: number) => (
                                     <div key={idx} className="text-xs bg-destructive/10 p-2 rounded">
                                       <span className="font-medium">{error.franchisee}</span>
                                       <span className="block mt-1 text-destructive">{error.error}</span>

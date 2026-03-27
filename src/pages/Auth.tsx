@@ -60,8 +60,9 @@ const Auth = () => {
 
         toast.success("Cuenta creada. Por favor, verifica tu email.");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Ha ocurrido un error");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(message || "Ha ocurrido un error");
     } finally {
       setLoading(false);
     }

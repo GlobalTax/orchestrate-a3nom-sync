@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
+import { logger } from "@/lib/logger";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { 
@@ -107,12 +108,12 @@ export default function RestaurantImport() {
     if (!validateMapping()) return;
 
     const errors = validateData(rawData, columnMapping, (row, index) => {
-      const validationErrors: Array<{ row: number; field: string; message: string; value?: any; isCritical?: boolean }> = [];
-      const mappedRow: Record<string, any> = {};
+      const validationErrors: Array<{ row: number; field: string; message: string; value?: unknown; isCritical?: boolean }> = [];
+      const mappedRow: Record<string, unknown> = {};
 
       // Map and sanitize data
       Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
-        let value = row[csvCol];
+        let value: unknown = row[csvCol];
         if (value === "#N/D" || value === "#N/A" || value === "N/A" || value === "" || value === null || value === undefined) {
           value = null;
         } else if (typeof value === "string") {
@@ -179,7 +180,7 @@ export default function RestaurantImport() {
   const performImport = async () => {
     if (!validateMapping()) return;
 
-    console.info("[RestaurantImport] Iniciando importación");
+    logger.error("RestaurantImport", "Iniciando importación");
     setStep("importing");
     updateProgress(0, rawData.length);
 
@@ -216,15 +217,15 @@ export default function RestaurantImport() {
       const franchiseeIdMap = new Map<string, string>();
 
       if (uniqueFranchisees.length > 0) {
-        console.info('[RestaurantImport] Upserting franchisees:', uniqueFranchisees.length);
-        
+        logger.error("RestaurantImport", "Upserting franchisees:", uniqueFranchisees.length);
+
         const { data: franchisees, error: franchiseeError } = await supabase
           .from('franchisees')
           .upsert(uniqueFranchisees, { onConflict: 'email' })
           .select('id, email');
 
         if (franchiseeError) {
-          console.error('[RestaurantImport] Error upserting franchisees:', franchiseeError);
+          logger.error("RestaurantImport", "Error upserting franchisees:", franchiseeError);
           throw franchiseeError;
         }
 
@@ -234,7 +235,7 @@ export default function RestaurantImport() {
       }
 
       // STEP 2: Process restaurants with franchisee_id
-      console.info('[RestaurantImport] Processing restaurants');
+      logger.error("RestaurantImport", "Processing restaurants");
       const batchSize = 50;
       const batches = Math.ceil(rawData.length / batchSize);
 
@@ -242,13 +243,13 @@ export default function RestaurantImport() {
         const batch = rawData.slice(i * batchSize, (i + 1) * batchSize);
 
         for (const [index, row] of batch.entries()) {
-          const mappedRow: Record<string, any> = {};
-          
+          const mappedRow: Record<string, unknown> = {};
+
           Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
             mappedRow[dbCol] = row[csvCol] || null;
           });
 
-          const restaurantData: any = {
+          const restaurantData: Record<string, unknown> = {
             codigo: mappedRow.site_number, // Use site_number as codigo for duplicate detection
             nombre: mappedRow.nombre,
             site_number: mappedRow.site_number,
@@ -304,11 +305,12 @@ export default function RestaurantImport() {
                 result.inserted++;
               }
             }
-          } catch (error: any) {
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Unknown error";
             result.errors.push({
               row: i * batchSize + index + 1,
               field: "general",
-              message: error.message,
+              message,
             });
           }
         }
@@ -325,9 +327,10 @@ export default function RestaurantImport() {
       setStep("complete");
       
       toast.success(`Importación completada: ${result.inserted} insertados, ${result.updated} actualizados`);
-    } catch (error: any) {
-      console.error('[RestaurantImport] Error:', error);
-      toast.error(`Error: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("RestaurantImport", "Error:", message);
+      toast.error(`Error: ${message}`);
       setStep("preview");
     }
   };
@@ -465,7 +468,7 @@ export default function RestaurantImport() {
 
                 <div className="mb-6">
                   <Label>Estrategia de Importación</Label>
-                  <Select value={importStrategy} onValueChange={(v: any) => setImportStrategy(v)}>
+                  <Select value={importStrategy} onValueChange={(v: string) => setImportStrategy(v as "insert" | "upsert" | "skip")}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -489,7 +492,7 @@ export default function RestaurantImport() {
                     </TableHeader>
                     <TableBody>
                       {rawData.slice(0, 20).map((row, idx) => {
-                        const mappedRow: Record<string, any> = {};
+                        const mappedRow: Record<string, unknown> = {};
                         Object.entries(columnMapping).forEach(([csvCol, dbCol]) => {
                           mappedRow[dbCol] = row[csvCol];
                         });

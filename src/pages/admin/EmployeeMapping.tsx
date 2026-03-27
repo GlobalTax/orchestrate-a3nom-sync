@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { logger } from "@/lib/logger";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -114,9 +115,10 @@ const EmployeeMapping = () => {
       });
 
       setMappingRows(rows);
-    } catch (error: any) {
-      console.error("Error fetching employees:", error);
-      toast.error("Error al cargar empleados: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("EmployeeMapping", "Error fetching employees:", message);
+      toast.error("Error al cargar empleados: " + message);
     } finally {
       setLoading(false);
     }
@@ -207,9 +209,10 @@ const EmployeeMapping = () => {
 
       toast.success(`${updates.length} mapeo(s) actualizado(s) correctamente`);
       await fetchEmployees();
-    } catch (error: any) {
-      console.error("Error saving mappings:", error);
-      toast.error("Error al guardar mapeos: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("EmployeeMapping", "Error saving mappings:", message);
+      toast.error("Error al guardar mapeos: " + message);
     } finally {
       setSaving(false);
     }
@@ -302,9 +305,10 @@ const EmployeeMapping = () => {
       
       // Reset file input
       event.target.value = "";
-    } catch (error: any) {
-      console.error("Error importing CSV:", error);
-      toast.error("Error al importar CSV: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("EmployeeMapping", "Error importing CSV:", message);
+      toast.error("Error al importar CSV: " + message);
     }
   };
 
@@ -484,7 +488,7 @@ const EmployeeMapping = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="flex-1"
               />
-              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+              <Select value={filterType} onValueChange={(value: typeof filterType) => setFilterType(value)}>
                 <SelectTrigger className="w-full sm:w-[250px]">
                   <SelectValue placeholder="Filtrar por estado" />
                 </SelectTrigger>

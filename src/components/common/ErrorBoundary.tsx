@@ -1,5 +1,6 @@
 import React from "react";
 import { AlertCircle } from "lucide-react";
+import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -24,7 +25,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    logger.error("ErrorBoundary", "Caught an error:", error, errorInfo);
   }
 
   handleReset = () => {

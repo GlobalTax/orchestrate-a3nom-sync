@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Building2, CheckCircle2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface InviteData {
   id: string;
@@ -55,8 +56,9 @@ const AcceptInvite = () => {
 
       setInviteData(invite as InviteData);
       setLoading(false);
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(message);
       navigate("/auth");
     }
   };
@@ -118,9 +120,10 @@ const AcceptInvite = () => {
 
       toast.success("¡Cuenta creada correctamente!");
       navigate("/dashboard");
-    } catch (error: any) {
-      console.error("Error al crear cuenta:", error);
-      toast.error("Error al crear cuenta: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("AcceptInvite", "Error al crear cuenta:", error);
+      toast.error("Error al crear cuenta: " + message);
       setSubmitting(false);
     }
   };

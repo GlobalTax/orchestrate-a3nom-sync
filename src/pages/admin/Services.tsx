@@ -89,7 +89,7 @@ const Services = () => {
     }
     acc[key].services.push(service);
     return acc;
-  }, {} as Record<string, { restaurant: any; services: RestaurantService[] }>);
+  }, {} as Record<string, { restaurant: { codigo: string; nombre: string }; services: RestaurantService[] }>);
 
   const createMutation = useMutation({
     mutationFn: async (newService: typeof formData) => {
@@ -108,7 +108,7 @@ const Services = () => {
       setDialogOpen(false);
       resetForm();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error("Error al crear service: " + error.message);
     },
   });
@@ -131,7 +131,7 @@ const Services = () => {
       setDialogOpen(false);
       resetForm();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error("Error al actualizar service: " + error.message);
     },
   });
@@ -152,7 +152,7 @@ const Services = () => {
       queryClient.invalidateQueries({ queryKey: ["restaurant_services"] });
       toast.success("Estado actualizado correctamente");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error("Error al actualizar estado: " + error.message);
     },
   });
@@ -176,8 +176,9 @@ const Services = () => {
       } else {
         toast.error("Error en la conexión: " + data.message);
       }
-    } catch (error: any) {
-      toast.error("Error al probar conexión: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error("Error al probar conexión: " + message);
     } finally {
       setTestingService(null);
     }

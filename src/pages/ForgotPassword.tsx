@@ -26,8 +26,9 @@ const ForgotPassword = () => {
 
       setEmailSent(true);
       toast.success("Se ha enviado un email con las instrucciones para restablecer tu contraseña");
-    } catch (error: any) {
-      toast.error(error.message || "Ha ocurrido un error al enviar el email");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(message || "Ha ocurrido un error al enviar el email");
     } finally {
       setLoading(false);
     }

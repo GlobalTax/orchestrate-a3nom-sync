@@ -90,7 +90,7 @@ const Centres = () => {
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error("Error al guardar: " + error.message);
     },
   });
@@ -108,7 +108,7 @@ const Centres = () => {
       queryClient.invalidateQueries({ queryKey: ["centres"] });
       toast.success("Estado del centro actualizado");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error("Error al actualizar: " + error.message);
     },
   });
@@ -173,8 +173,9 @@ const Centres = () => {
       } else {
         toast.error("Error al conectar con Orquest");
       }
-    } catch (error: any) {
-      toast.error("Error al probar conexión: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error("Error al probar conexión: " + message);
     } finally {
       setTestingConnection(false);
     }
@@ -205,8 +206,9 @@ const Centres = () => {
       toast.success(`Sincronización iniciada para ${centre.nombre}`);
       
       setTimeout(() => navigate('/admin/sincronizar'), 1500);
-    } catch (error: any) {
-      toast.error("Error al iniciar sincronización: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error("Error al iniciar sincronización: " + message);
     } finally {
       setSyncingCentre(null);
     }

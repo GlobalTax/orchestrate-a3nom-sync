@@ -34,7 +34,7 @@ export interface DateRange {
 export interface Filter {
   field: string;
   operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "in";
-  value: any;
+  value: unknown;
 }
 
 export interface SortConfig {

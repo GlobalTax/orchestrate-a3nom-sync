@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Download, Save, AlertTriangle, Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { logger } from "@/lib/logger";
 
 interface MappingProfile {
   id: string;
@@ -108,8 +109,9 @@ const PayrollImport = () => {
         ...p,
         column_mappings: p.column_mappings as Record<string, string>
       })));
-    } catch (error: any) {
-      console.error("Error fetching profiles:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("PayrollImport", "Error fetching profiles:", message);
     }
   };
 
@@ -153,9 +155,10 @@ const PayrollImport = () => {
       setShowSaveProfile(false);
       setNewProfileName("");
       fetchProfiles();
-    } catch (error: any) {
-      console.error("Error saving profile:", error);
-      toast.error("Error al guardar perfil: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("PayrollImport", "Error saving profile:", message);
+      toast.error("Error al guardar perfil: " + message);
     }
   };
 
@@ -171,7 +174,7 @@ const PayrollImport = () => {
     fileImport.updateProgress(0, fileImport.rawData.length);
     fileImport.updateStats({ loaded: 0, skipped: 0, errors: 0 });
 
-    const errors: any[] = [];
+    const errors: Array<{ row: number; errors: string[]; data: Record<string, unknown> }> = [];
     const logId = crypto.randomUUID();
 
     try {
@@ -213,7 +216,7 @@ const PayrollImport = () => {
           const rowNumber = i + idx + 1;
 
           try {
-            const mapped: any = {};
+            const mapped: Record<string, unknown> = {};
             Object.entries(columnMapping.columnMapping).forEach(([targetField, sourceColumn]) => {
               mapped[targetField] = row[sourceColumn];
             });
@@ -253,10 +256,11 @@ const PayrollImport = () => {
             });
 
             loaded++;
-          } catch (error: any) {
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Unknown error";
             errors.push({
               row: rowNumber,
-              errors: [error.message],
+              errors: [message],
               data: row,
             });
             errorCount++;
@@ -270,7 +274,7 @@ const PayrollImport = () => {
             .insert(payrollsToInsert);
 
           if (insertError) {
-            console.error("Batch insert error:", insertError);
+            logger.error("PayrollImport", "Batch insert error:", insertError);
             errorCount += payrollsToInsert.length;
             loaded -= payrollsToInsert.length;
           }
@@ -300,13 +304,14 @@ const PayrollImport = () => {
           `${skipped} registros omitidos, ${errorCount} con errores. Descarga el log para más detalles.`
         );
       }
-    } catch (error: any) {
-      console.error("Import error:", error);
-      toast.error("Error durante la importación: " + error.message);
-      
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("PayrollImport", "Import error:", message);
+      toast.error("Error durante la importación: " + message);
+
       await supabase.from("import_logs").update({
         status: "failed",
-        error_details: [{ error: error.message }],
+        error_details: [{ error: message }],
       }).eq("id", logId);
     }
   };

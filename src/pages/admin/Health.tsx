@@ -72,8 +72,9 @@ export default function Health() {
       
       toast.success('Health check completado');
       await refetchHealth();
-    } catch (error: any) {
-      toast.error(`Error: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Error: ${message}`);
     } finally {
       setIsChecking(false);
     }

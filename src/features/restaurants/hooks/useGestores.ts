@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import type { UserWithRoles, GestorAssignment } from "../types";
 
 export const useGestores = (isAdmin: boolean) => {
@@ -14,7 +15,7 @@ export const useGestores = (isAdmin: boolean) => {
         .select("*");
       
       if (profilesError) {
-        console.error("[useGestores] Error fetching profiles:", profilesError);
+        logger.error("useGestores", "Error fetching profiles:", profilesError);
         toast.error("Error al cargar perfiles: " + profilesError.message);
         throw profilesError;
       }
@@ -24,7 +25,7 @@ export const useGestores = (isAdmin: boolean) => {
         .select("*");
       
       if (rolesError) {
-        console.error("[useGestores] Error fetching user roles:", rolesError);
+        logger.error("useGestores", "Error fetching user roles:", rolesError);
         toast.error("Error al cargar roles: " + rolesError.message);
         throw rolesError;
       }
@@ -56,8 +57,9 @@ export const useGestores = (isAdmin: boolean) => {
       queryClient.invalidateQueries({ queryKey: ["users_with_roles"] });
       toast.success("Gestor asignado correctamente");
     },
-    onError: (error: any) => {
-      toast.error("Error al asignar gestor: " + error.message);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Error al asignar gestor: " + message);
     },
   });
 
@@ -73,8 +75,9 @@ export const useGestores = (isAdmin: boolean) => {
       queryClient.invalidateQueries({ queryKey: ["users_with_roles"] });
       toast.success("Gestor removido correctamente");
     },
-    onError: (error: any) => {
-      toast.error("Error al remover gestor: " + error.message);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Error al remover gestor: " + message);
     },
   });
 
@@ -89,8 +92,9 @@ export const useGestores = (isAdmin: boolean) => {
       toast.success(`✅ ${data.created_users} usuarios creados, ${data.roles_assigned} roles asignados`);
       queryClient.invalidateQueries({ queryKey: ["users_with_roles"] });
     },
-    onError: (error: any) => {
-      toast.error("Error: " + error.message);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Error: " + message);
     },
   });
 

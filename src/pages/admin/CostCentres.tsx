@@ -108,7 +108,7 @@ const CostCentres = () => {
       toast.success(editingCostCentre ? "Centro de coste actualizado" : "Centro de coste creado");
       resetForm();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error("Error al guardar: " + error.message);
     },
   });
@@ -130,7 +130,7 @@ const CostCentres = () => {
       queryClient.invalidateQueries({ queryKey: ["cost_centres"] });
       toast.success("Estado actualizado");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error("Error: " + error.message);
     },
   });

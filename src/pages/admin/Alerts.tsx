@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/useUserRole";
+import { logger } from "@/lib/logger";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,12 +41,12 @@ export default function Alerts() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { isAdmin, loading: roleLoading } = useUserRole();
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<Record<string, unknown>[]>([]);
   const [centros, setCentros] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingAlert, setEditingAlert] = useState<any>(null);
+  const [editingAlert, setEditingAlert] = useState<Record<string, unknown> | null>(null);
   const [stats, setStats] = useState({ total: 0, activas: 0, disparadas_hoy: 0 });
 
   const [formData, setFormData] = useState({
@@ -83,10 +84,12 @@ export default function Alerts() {
 
       if (error) throw error;
       setAlerts(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Alerts", "Error fetching alerts:", message);
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -98,9 +101,10 @@ export default function Alerts() {
     try {
       const { data, error } = await supabase.rpc('get_centros');
       if (error) throw error;
-      setCentros(data?.map((d: any) => d.centro) || []);
-    } catch (error) {
-      console.error('Error fetching centros:', error);
+      setCentros(data?.map((d: { centro: string }) => d.centro) || []);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Alerts", "Error fetching centros:", message);
     }
   };
 
@@ -127,8 +131,9 @@ export default function Alerts() {
         activas: activas || 0,
         disparadas_hoy: disparadas || 0,
       });
-    } catch (error) {
-      console.error('Error fetching stats:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Alerts", "Error fetching stats:", message);
     }
   };
 
@@ -145,10 +150,12 @@ export default function Alerts() {
       });
       
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Alerts", "Error executing alerts:", message);
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -183,7 +190,7 @@ export default function Alerts() {
         const { error } = await supabase
           .from('alerts')
           .update(alertData)
-          .eq('id', editingAlert.id);
+          .eq('id', editingAlert.id as string);
 
         if (error) throw error;
       } else {
@@ -203,29 +210,32 @@ export default function Alerts() {
       resetForm();
       fetchAlerts();
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Alerts", "Error saving alert:", message);
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     }
   };
 
-  const handleEdit = (alert: any) => {
+  const handleEdit = (alert: Record<string, unknown>) => {
     setEditingAlert(alert);
+    const canal = alert.canal as string[];
     setFormData({
-      nombre: alert.nombre,
-      descripcion: alert.descripcion || '',
-      tipo: alert.tipo,
-      centro: alert.centro || '',
-      umbral_valor: alert.umbral_valor?.toString() || '',
-      umbral_operador: alert.umbral_operador,
-      periodo_calculo: alert.periodo_calculo,
-      canal_inapp: alert.canal.includes('inapp'),
-      canal_email: alert.canal.includes('email'),
-      destinatarios_email: Array.isArray(alert.destinatarios) ? alert.destinatarios.join(', ') : '',
-      activo: alert.activo,
+      nombre: alert.nombre as string,
+      descripcion: (alert.descripcion as string) || '',
+      tipo: alert.tipo as string,
+      centro: (alert.centro as string) || '',
+      umbral_valor: alert.umbral_valor != null ? String(alert.umbral_valor) : '',
+      umbral_operador: alert.umbral_operador as string,
+      periodo_calculo: alert.periodo_calculo as string,
+      canal_inapp: canal.includes('inapp'),
+      canal_email: canal.includes('email'),
+      destinatarios_email: Array.isArray(alert.destinatarios) ? (alert.destinatarios as string[]).join(', ') : '',
+      activo: alert.activo as boolean,
     });
     setDialogOpen(true);
   };
@@ -248,30 +258,34 @@ export default function Alerts() {
 
       fetchAlerts();
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Alerts", "Error deleting alert:", message);
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     }
   };
 
-  const handleToggleActive = async (alert: any) => {
+  const handleToggleActive = async (alert: Record<string, unknown>) => {
     try {
       const { error } = await supabase
         .from('alerts')
-        .update({ activo: !alert.activo })
-        .eq('id', alert.id);
+        .update({ activo: !(alert.activo as boolean) })
+        .eq('id', alert.id as string);
 
       if (error) throw error;
 
       fetchAlerts();
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Alerts", "Error toggling alert active:", message);
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     }
@@ -514,27 +528,27 @@ export default function Alerts() {
             </TableHeader>
             <TableBody>
               {alerts.map((alert) => (
-                <TableRow key={alert.id}>
+                <TableRow key={alert.id as string}>
                   <TableCell>
                     <Switch
-                      checked={alert.activo}
+                      checked={alert.activo as boolean}
                       onCheckedChange={() => handleToggleActive(alert)}
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{alert.nombre}</TableCell>
+                  <TableCell className="font-medium">{alert.nombre as string}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
                       {ALERT_TYPES.find(t => t.value === alert.tipo)?.label}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {OPERATORS.find(o => o.value === alert.umbral_operador)?.label.charAt(0)} {alert.umbral_valor}
+                    {OPERATORS.find(o => o.value === alert.umbral_operador)?.label.charAt(0)} {alert.umbral_valor as number}
                   </TableCell>
-                  <TableCell>{alert.centro || 'Todos'}</TableCell>
+                  <TableCell>{(alert.centro as string) || 'Todos'}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      {alert.canal.includes('inapp') && <Badge variant="secondary">In-App</Badge>}
-                      {alert.canal.includes('email') && <Badge variant="secondary">Email</Badge>}
+                      {(alert.canal as string[]).includes('inapp') && <Badge variant="secondary">In-App</Badge>}
+                      {(alert.canal as string[]).includes('email') && <Badge variant="secondary">Email</Badge>}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -542,7 +556,7 @@ export default function Alerts() {
                       <Button size="icon" variant="ghost" onClick={() => handleEdit(alert)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(alert.id)}>
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(alert.id as string)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

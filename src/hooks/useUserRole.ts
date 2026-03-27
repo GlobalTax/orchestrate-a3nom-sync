@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
 
 export type AppRole = "admin" | "franquiciado" | "gestor" | "asesoria";
 
@@ -59,7 +60,7 @@ export const useUserRole = () => {
 
       const accessibleCentros = userCentres?.map(c => c.centro_code) || [];
 
-      console.log('[useUserRole] 🔐 User roles loaded:', {
+      logger.info('useUserRole', 'User roles loaded', {
         userId: user.id,
         email: user.email,
         roles: uniqueRoles,
