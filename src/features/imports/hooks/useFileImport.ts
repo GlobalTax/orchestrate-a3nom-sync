@@ -28,6 +28,9 @@ export interface UseFileImportOptions {
   onImportComplete?: (stats: ImportStats) => void;
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_EXTENSIONS = ['.xlsx', '.xls', '.csv'];
+
 export const useFileImport = (options: UseFileImportOptions = {}) => {
   const [step, setStep] = useState<ImportStep["current"]>("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -44,6 +47,19 @@ export const useFileImport = (options: UseFileImportOptions = {}) => {
 
   const parseFile = useCallback(async (uploadedFile: File) => {
     try {
+      // Validate file size
+      if (uploadedFile.size > MAX_FILE_SIZE) {
+        toast.error(`El archivo excede el tamaño máximo permitido (${MAX_FILE_SIZE / 1024 / 1024}MB)`);
+        return;
+      }
+
+      // Validate file extension
+      const ext = '.' + (uploadedFile.name.split('.').pop()?.toLowerCase() ?? '');
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        toast.error(`Tipo de archivo no permitido. Usa: ${ALLOWED_EXTENSIONS.join(', ')}`);
+        return;
+      }
+
       const data = await uploadedFile.arrayBuffer();
       const workbook = XLSX.read(data, { type: "array" });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -54,7 +70,7 @@ export const useFileImport = (options: UseFileImportOptions = {}) => {
         return;
       }
 
-      const parsedHeaders = Object.keys(jsonData[0] as any);
+      const parsedHeaders = Object.keys(jsonData[0] as Record<string, unknown>);
       
       setFile(uploadedFile);
       setRawData(jsonData);

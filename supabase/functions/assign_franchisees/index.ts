@@ -130,7 +130,7 @@ serve(async (req) => {
               .join("\n");
 
             await resend.emails.send({
-              from: "McDonald's España <onboarding@resend.dev>",
+              from: Deno.env.get("RESEND_FROM_ADDRESS") || "McDonald's España <onboarding@resend.dev>",
               to: [email],
               subject: "Bienvenido al Sistema de Gestión de McDonald's",
               html: `

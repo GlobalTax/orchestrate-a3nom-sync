@@ -66,10 +66,7 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (!isAdmin && centros.length === 0) {
-        console.warn('[RestaurantContext] ⚠️ Gestor sin centros asignados, retornando array vacío');
-        toast.warning('⚠️ No tienes restaurantes asignados', {
-          description: 'Contacta con un administrador para que te asigne acceso a restaurantes'
-        });
+        console.warn('[RestaurantContext] Gestor sin centros asignados, retornando array vacío');
         return [];
       }
 
@@ -138,9 +135,9 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
         orquest_business_id: c.orquest_business_id,
         activo: c.activo,
         franchisee_id: c.franchisee_id,
-        franchisee_name: (c as any).franchisee_name ?? null,
-        franchisee_email: (c as any).franchisee_email ?? null,
-        company_tax_id: (c as any).company_tax_id ?? null,
+        franchisee_name: (c as Record<string, unknown>).franchisee_name as string ?? null,
+        franchisee_email: (c as Record<string, unknown>).franchisee_email as string ?? null,
+        company_tax_id: (c as Record<string, unknown>).company_tax_id as string ?? null,
         seating_capacity: typeof c.seating_capacity === 'string' ? parseInt(c.seating_capacity) : c.seating_capacity ?? null,
         square_meters: typeof c.square_meters === 'string' ? parseFloat(c.square_meters) : c.square_meters ?? null,
         opening_date: c.opening_date ?? null,
@@ -164,31 +161,15 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // PASO 5: DIAGNÓSTICO (solo logs, toasts solo para errores críticos)
+      // PASO 5: DIAGNÓSTICO (logs only, no toasts in data fetching)
       const finalCount = allRestaurants.length;
       const filterStatus = showInactive ? 'todos (activos + inactivos)' : 'solo activos';
 
       if (isAdmin) {
-        console.log(`[RestaurantContext] ✅ Admin ve ${finalCount} de ${totalDb} restaurantes (${filterStatus})`);
-        
-        // Solo mostrar toast si hay error crítico
-        if (finalCount === 0 && totalDb && totalDb > 0) {
-          toast.error('Error de permisos', {
-            description: `No se pueden cargar los ${totalDb} restaurantes disponibles`,
-          });
-        }
+        console.log(`[RestaurantContext] Admin ve ${finalCount} de ${totalDb} restaurantes (${filterStatus})`);
       } else {
-        console.log(`[RestaurantContext] ✅ Gestor ve ${finalCount} restaurantes (${filterStatus}, filtrado por ${centros.length} centros)`);
-        
-        // Solo mostrar toast si no tiene acceso a nada
-        if (finalCount === 0 && centros.length > 0) {
-          toast.warning('Sin acceso', {
-            description: 'No tienes restaurantes asignados',
-          });
-        }
+        console.log(`[RestaurantContext] Gestor ve ${finalCount} restaurantes (${filterStatus}, filtrado por ${centros.length} centros)`);
       }
-
-      console.log(`[RestaurantContext] 🎯 Retornando ${finalCount} restaurantes finales`);
       return allRestaurants;
     },
     enabled: !roleLoading,

@@ -42,7 +42,7 @@ const AcceptInvite = () => {
   const validateToken = async (token: string) => {
     try {
       const { data: invite, error } = await supabase
-        .from("invites" as any)
+        .from("invites")
         .select("*")
         .eq("token", token)
         .is("accepted_at", null)
@@ -53,7 +53,7 @@ const AcceptInvite = () => {
         throw new Error("Token inválido o expirado");
       }
 
-      setInviteData(invite as any);
+      setInviteData(invite as InviteData);
       setLoading(false);
     } catch (error: any) {
       toast.error(error.message);
@@ -101,19 +101,19 @@ const AcceptInvite = () => {
       }
 
       // Assign role in user_roles
-      const { error: roleError } = await supabase.from("user_roles" as any).insert({
+      const { error: roleError } = await supabase.from("user_roles").insert({
         user_id: authData.user.id,
         role: inviteData!.role,
         centro: inviteData!.centro || null,
         franchisee_id: inviteData!.franchisee_id || null,
-      } as any);
+      });
 
       if (roleError) throw roleError;
 
       // Mark invitation as accepted
       await supabase
-        .from("invites" as any)
-        .update({ accepted_at: new Date().toISOString() } as any)
+        .from("invites")
+        .update({ accepted_at: new Date().toISOString() })
         .eq("id", inviteData!.id);
 
       toast.success("¡Cuenta creada correctamente!");

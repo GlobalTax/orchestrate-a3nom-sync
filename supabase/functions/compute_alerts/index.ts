@@ -360,7 +360,7 @@ function calculatePeriod(periodo: string): { startDate: string; endDate: string 
 async function sendEmail(notification: NotificationData, email: string, resend: any) {
   try {
     await resend.emails.send({
-      from: 'Alertas Orquest <onboarding@resend.dev>',
+      from: Deno.env.get('RESEND_FROM_ADDRESS') || 'Alertas Orquest <onboarding@resend.dev>',
       to: email,
       subject: `🚨 ${notification.titulo}`,
       html: `

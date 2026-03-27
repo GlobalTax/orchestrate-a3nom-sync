@@ -347,12 +347,16 @@ async function syncEmployees(
       apiUrl += `&businessId=${businessId}`;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
     const response = await fetch(apiUrl, {
       headers: {
         'Cookie': `JSESSIONID=${cookie}`,
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Orquest API error: ${response.status}`);
@@ -431,12 +435,16 @@ async function syncSchedules(
       apiUrl += `&businessId=${businessId}`;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     const response = await fetch(apiUrl, {
       headers: {
         'Cookie': `JSESSIONID=${cookie}`,
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Orquest API error: ${response.status}`);
@@ -540,12 +548,16 @@ async function syncAbsences(
       apiUrl += `&businessId=${businessId}`;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     const response = await fetch(apiUrl, {
       headers: {
         'Cookie': `JSESSIONID=${cookie}`,
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Orquest API error: ${response.status}`);

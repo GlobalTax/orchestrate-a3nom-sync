@@ -7,7 +7,7 @@ export class AppError extends Error {
   constructor(
     message: string,
     public code?: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = "AppError";
@@ -98,7 +98,7 @@ export const ErrorHandler = {
   /**
    * Create an AppError
    */
-  createError(message: string, code?: string, details?: any): AppError {
+  createError(message: string, code?: string, details?: unknown): AppError {
     return new AppError(message, code, details);
   },
 };
@@ -111,7 +111,7 @@ export async function retryWithBackoff<T>(
   maxRetries = 3,
   initialDelay = 1000
 ): Promise<T> {
-  let lastError: any;
+  let lastError: unknown;
   
   for (let i = 0; i < maxRetries; i++) {
     try {

@@ -55,7 +55,7 @@ export async function getServicesHybrid(franchiseeId?: string) {
 
     console.log('⚠️ Caché vacío o desactualizado, consultando Orquest API...');
     // Cache is stale or empty, fetch from API and update cache
-    const freshServices = await getServices(franchiseeId) as any[];
+    const freshServices = await getServices(franchiseeId) as Record<string, unknown>[];
     
     // Update cache in background (no await)
     updateServicesCache(freshServices).catch(err => 
@@ -74,12 +74,12 @@ export async function getServicesHybrid(franchiseeId?: string) {
  * Update services cache in Supabase
  * Can be called manually or triggered automatically
  */
-export async function updateServicesCache(services?: any[]) {
+export async function updateServicesCache(services?: Record<string, unknown>[]) {
   try {
     // If services not provided, fetch from Orquest
-    const servicesToCache = services || (await getServices() as any[]);
+    const servicesToCache = services || (await getServices() as Record<string, unknown>[]);
 
-    const servicesToUpsert = servicesToCache.map((service: any) => ({
+    const servicesToUpsert = servicesToCache.map((service) => ({
       id: service.id,
       nombre: service.name,
       zona_horaria: service.timeZone || null,
