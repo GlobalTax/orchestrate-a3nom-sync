@@ -441,7 +441,7 @@ export default function RestaurantImport() {
                             {error.isCritical ? "CRÍTICO" : "Advertencia"}
                           </Badge>
                           Fila {error.row}, campo "{error.field}": {error.message}
-                          {error.value && <span className="font-mono ml-2 text-muted-foreground">({String(error.value ?? "")})</span>}
+                          {error.value !== undefined && error.value !== null && <span className="font-mono ml-2 text-muted-foreground">({String(error.value)})</span>}
                         </p>
                       ))}
                       {validationErrors.length > 10 && (
