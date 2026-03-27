@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString()
           }))
 
-          await upsertInChunks(supabaseClient, 'orquest_services', servicesToUpsert, UPSERT_CHUNK_SIZE)
+          await upsertInChunks(supabaseClient, 'servicios_orquest', servicesToUpsert, UPSERT_CHUNK_SIZE)
 
           totalServicesUpdated += servicesToUpsert.length
           results.push({

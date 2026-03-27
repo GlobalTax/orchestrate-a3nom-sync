@@ -24,7 +24,7 @@ export async function getServicesHybrid(franchiseeId?: string) {
   try {
     // First, try to get from Supabase cache
     const { data: cachedServices, error } = await supabase
-      .from('orquest_services')
+      .from('servicios_orquest')
       .select('*')
       .order('updated_at', { ascending: false });
 
@@ -90,7 +90,7 @@ export async function updateServicesCache(services?: Record<string, unknown>[]) 
     }));
 
     const { error } = await supabase
-      .from('orquest_services')
+      .from('servicios_orquest')
       .upsert(servicesToUpsert, { onConflict: 'id' });
 
     if (error) {

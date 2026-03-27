@@ -81,16 +81,27 @@ serve(async (req) => {
       );
     }
 
-    // Build query string
+    // Build URL with correct path pattern
     const queryParams = new URLSearchParams(query);
-    
-    // Añadir businessId al query si es necesario
-    if (!path.includes('/businesses/') && !queryParams.has('businessId')) {
-      queryParams.append('businessId', defaultBusinessId);
+    let resolvedPath: string;
+
+    if (path.includes('/businesses/') || path.includes('/importer/')) {
+      // Already has full path, use as-is
+      resolvedPath = path;
+    } else if (authMethod === 'bearer_token') {
+      // Bearer token uses /importer/api/v2/ path pattern
+      const resource = path.startsWith('/api/') ? path.slice(5) : path.replace(/^\//, '');
+      resolvedPath = `/importer/api/v2/businesses/${defaultBusinessId}/${resource}`;
+    } else {
+      // Legacy cookie auth uses old /api/ path with businessId as query param
+      resolvedPath = path;
+      if (!queryParams.has('businessId')) {
+        queryParams.append('businessId', defaultBusinessId);
+      }
     }
 
     const queryString = queryParams.toString();
-    const url = `${baseUrl}${path}${queryString ? `?${queryString}` : ''}`;
+    const url = `${baseUrl}${resolvedPath}${queryString ? `?${queryString}` : ''}`;
 
     console.log(`📡 Proxying request: ${method} ${url} (auth: ${authMethod})`);
 
