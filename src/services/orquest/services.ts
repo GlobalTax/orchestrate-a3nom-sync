@@ -53,14 +53,16 @@ export async function getServicesHybrid(franchiseeId?: string) {
       }
     }
 
-    console.log('⚠️ Caché vacío o desactualizado, consultando Orquest API...');
+    console.log('Caché vacío o desactualizado, consultando Orquest API...');
     // Cache is stale or empty, fetch from API and update cache
     const freshServices = await getServices(franchiseeId) as Record<string, unknown>[];
-    
-    // Update cache in background (no await)
-    updateServicesCache(freshServices).catch(err => 
-      console.error('Error actualizando caché:', err)
-    );
+
+    // Await cache update to ensure consistency for subsequent reads
+    try {
+      await updateServicesCache(freshServices);
+    } catch (err) {
+      console.error('Error actualizando caché:', err);
+    }
 
     return freshServices;
   } catch (error) {
