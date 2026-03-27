@@ -44,7 +44,7 @@ const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
-  const { isAdmin } = useUserRole();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [everAdmin, setEverAdmin] = useState(false);
@@ -75,11 +75,11 @@ const Layout = () => {
 
   // Redirect non-admin users from admin routes
   useEffect(() => {
-    if (session && !isAdmin && location.pathname.startsWith("/admin")) {
+    if (!roleLoading && session && !isAdmin && location.pathname.startsWith("/admin")) {
       navigate("/dashboard");
       toast.error("No tienes permisos para acceder a esta sección");
     }
-  }, [session, isAdmin, location.pathname, navigate]);
+  }, [session, isAdmin, roleLoading, location.pathname, navigate]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
