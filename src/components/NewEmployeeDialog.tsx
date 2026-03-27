@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { EmployeesService } from "@/services/api/employees.service";
+import { EmployeesService, type Employee } from "@/services/api/employees.service";
 import { employeeSchema, type EmployeeInput } from "@/lib/validators/employeeValidators";
 
 interface NewEmployeeDialogProps {
