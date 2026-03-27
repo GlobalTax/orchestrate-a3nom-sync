@@ -46,7 +46,7 @@ export class AbsencesService {
     const { data, error } = await query;
     
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as Absence[];
   }
 
   static async getByEmployee(employeeId: string, startDate?: string, endDate?: string): Promise<Absence[]> {

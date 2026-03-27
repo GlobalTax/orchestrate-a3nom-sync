@@ -125,7 +125,7 @@ export default function Audit() {
 
       if (error) throw error;
 
-      setLogs(data || []);
+      setLogs((data || []) as unknown as AuditLog[]);
 
       // Calculate statistics
       const uniqueUsers = new Set(data?.map(log => log.user_email).filter(Boolean)).size;
@@ -150,7 +150,7 @@ export default function Audit() {
   }, [isAdmin, filterUser, filterTable, filterAction, filterDateFrom, filterDateTo]);
 
   const getActionBadge = (action: string) => {
-    const variants: Record<string, { variant: string; color: string }> = {
+    const variants: Record<string, { variant: "default" | "destructive" | "outline" | "secondary"; color: string }> = {
       INSERT: { variant: "default", color: "bg-green-500" },
       UPDATE: { variant: "secondary", color: "bg-blue-500" },
       DELETE: { variant: "destructive", color: "bg-red-500" },

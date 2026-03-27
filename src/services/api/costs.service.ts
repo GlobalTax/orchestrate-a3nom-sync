@@ -39,7 +39,7 @@ export class CostsService {
     const { data, error } = await supabase.rpc("get_cost_metrics", {
       p_start_date: startDate,
       p_end_date: endDate,
-      p_centro: centro || null,
+      p_centro: centro ?? undefined,
     });
 
     if (error) throw error;
@@ -54,7 +54,7 @@ export class CostsService {
     const { data, error } = await supabase.rpc("get_hours_metrics", {
       p_start_date: startDate,
       p_end_date: endDate,
-      p_centro: centro || null,
+      p_centro: centro ?? undefined,
     });
 
     if (error) throw error;
@@ -74,7 +74,7 @@ export class CostsService {
     const { data, error } = await supabase.rpc("get_payroll_costs", {
       p_start_date: startDate,
       p_end_date: endDate,
-      p_centro: centro || null,
+      p_centro: centro ?? undefined,
     });
 
     if (error) throw error;
@@ -89,7 +89,7 @@ export class CostsService {
     const { data, error } = await supabase.rpc("get_planned_vs_actual_costs", {
       p_start_date: startDate,
       p_end_date: endDate,
-      p_centro: centro || null,
+      p_centro: centro ?? undefined,
     });
 
     if (error) throw error;
@@ -104,7 +104,7 @@ export class CostsService {
     const { data, error } = await supabase.rpc("get_daily_hours_evolution", {
       p_start_date: startDate,
       p_end_date: endDate,
-      p_centro: centro || null,
+      p_centro: centro ?? undefined,
     });
 
     if (error) throw error;

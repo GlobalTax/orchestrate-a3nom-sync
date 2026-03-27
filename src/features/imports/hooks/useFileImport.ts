@@ -64,14 +64,14 @@ export const useFileImport = (options: UseFileImportOptions = {}) => {
       const data = await uploadedFile.arrayBuffer();
       const workbook = XLSX.read(data, { type: "array" });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" }) as Record<string, unknown>[];
 
       if (jsonData.length === 0) {
         toast.error("El archivo está vacío");
         return;
       }
 
-      const parsedHeaders = Object.keys(jsonData[0] as Record<string, unknown>);
+      const parsedHeaders = Object.keys(jsonData[0]);
       
       setFile(uploadedFile);
       setRawData(jsonData);

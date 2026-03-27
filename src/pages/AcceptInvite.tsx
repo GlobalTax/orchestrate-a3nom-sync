@@ -103,12 +103,12 @@ const AcceptInvite = () => {
       }
 
       // Assign role in user_roles
-      const { error: roleError } = await supabase.from("user_roles").insert({
+      const { error: roleError } = await supabase.from("user_roles").insert([{
         user_id: authData.user.id,
-        role: inviteData!.role,
+        role: inviteData!.role as "admin" | "asesoria" | "contable" | "franquiciado" | "gestor",
         centro: inviteData!.centro || null,
         franchisee_id: inviteData!.franchisee_id || null,
-      });
+      }]);
 
       if (roleError) throw roleError;
 

@@ -20,7 +20,7 @@ export class EmployeesService {
       .order("apellidos", { ascending: true });
     
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as Employee[];
   }
 
   static async getByCentro(centro: string): Promise<Employee[]> {
@@ -31,7 +31,7 @@ export class EmployeesService {
       .order("apellidos", { ascending: true });
     
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as Employee[];
   }
 
   static async getById(id: string): Promise<Employee | null> {
@@ -42,7 +42,7 @@ export class EmployeesService {
       .maybeSingle();
     
     if (error) throw error;
-    return data;
+    return data as unknown as Employee | null;
   }
 
   static async create(employee: Omit<Employee, "id">): Promise<void> {

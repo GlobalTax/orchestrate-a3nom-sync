@@ -52,7 +52,7 @@ export default function Notifications() {
           table: 'alert_notifications',
         },
         (payload) => {
-          setNotifications((prev) => [payload.new, ...prev]);
+          setNotifications((prev) => [payload.new as Notification, ...prev]);
         }
       )
       .subscribe();
@@ -74,7 +74,7 @@ export default function Notifications() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setNotifications(data || []);
+      setNotifications((data || []) as unknown as Notification[]);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       toast({

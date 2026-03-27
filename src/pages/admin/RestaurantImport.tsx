@@ -268,14 +268,14 @@ export default function RestaurantImport() {
 
           try {
             if (importStrategy === "insert") {
-              const { error } = await supabase.from("centres").insert([restaurantData]);
+              const { error } = await supabase.from("centres").insert([restaurantData as any]);
               if (error) throw error;
               result.inserted++;
             } else if (importStrategy === "upsert") {
             const { data: existing } = await supabase
               .from("centres")
               .select("id")
-              .eq("codigo", restaurantData.codigo)
+              .eq("codigo", String(restaurantData.codigo))
               .maybeSingle();
 
               if (existing) {
@@ -286,7 +286,7 @@ export default function RestaurantImport() {
                 if (error) throw error;
                 result.updated++;
               } else {
-                const { error } = await supabase.from("centres").insert([restaurantData]);
+                const { error } = await supabase.from("centres").insert([restaurantData as any]);
                 if (error) throw error;
                 result.inserted++;
               }
@@ -294,13 +294,13 @@ export default function RestaurantImport() {
             const { data: existing } = await supabase
               .from("centres")
               .select("id")
-              .eq("codigo", restaurantData.codigo)
+              .eq("codigo", String(restaurantData.codigo))
               .maybeSingle();
 
               if (existing) {
                 result.skipped++;
               } else {
-                const { error } = await supabase.from("centres").insert([restaurantData]);
+                const { error } = await supabase.from("centres").insert([restaurantData as any]);
                 if (error) throw error;
                 result.inserted++;
               }
@@ -441,7 +441,7 @@ export default function RestaurantImport() {
                             {error.isCritical ? "CRÍTICO" : "Advertencia"}
                           </Badge>
                           Fila {error.row}, campo "{error.field}": {error.message}
-                          {error.value && <span className="font-mono ml-2 text-muted-foreground">({String(error.value)})</span>}
+                          {error.value !== undefined && error.value !== null && <span className="font-mono ml-2 text-muted-foreground">({String(error.value)})</span>}
                         </p>
                       ))}
                       {validationErrors.length > 10 && (
@@ -499,10 +499,10 @@ export default function RestaurantImport() {
 
                         return (
                           <TableRow key={idx}>
-                            <TableCell className="font-mono">{mappedRow.site_number}</TableCell>
-                            <TableCell>{mappedRow.nombre}</TableCell>
-                            <TableCell>{mappedRow.ciudad}</TableCell>
-                            <TableCell>{mappedRow.franchisee_name}</TableCell>
+                            <TableCell className="font-mono">{String(mappedRow.site_number ?? "")}</TableCell>
+                            <TableCell>{String(mappedRow.nombre ?? "")}</TableCell>
+                            <TableCell>{String(mappedRow.ciudad ?? "")}</TableCell>
+                            <TableCell>{String(mappedRow.franchisee_name ?? "")}</TableCell>
                           </TableRow>
                         );
                       })}

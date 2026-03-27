@@ -47,7 +47,7 @@ export async function saveAssignment(assignment: AssignmentData, franchiseeId?: 
   return callOrquestAPI({
     path: '/api/assignments',
     method: 'POST',
-    body: assignment,
+    body: assignment as unknown as Record<string, unknown>,
     franchiseeId,
   });
 }

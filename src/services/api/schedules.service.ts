@@ -45,7 +45,7 @@ export class SchedulesService {
     const { data, error } = await query;
     
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as Schedule[];
   }
 
   static async getByEmployee(employeeId: string, startDate?: string, endDate?: string): Promise<Schedule[]> {

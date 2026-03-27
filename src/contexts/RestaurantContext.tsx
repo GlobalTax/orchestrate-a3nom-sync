@@ -89,7 +89,7 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // PASO 2: Ejecutar query principal
-      const normalizados = centros.map(c => c.trim().toUpperCase());
+      const normalizados = centros.map((c: string) => c.trim().toUpperCase());
       let query = supabase
         .from('centres')
         .select(`

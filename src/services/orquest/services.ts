@@ -37,7 +37,7 @@ export async function getServicesHybrid(franchiseeId?: string) {
 
     // Check if cache is fresh (updated within last 6 hours)
     if (cachedServices && cachedServices.length > 0) {
-      const lastUpdate = new Date(cachedServices[0].updated_at);
+      const lastUpdate = new Date(String(cachedServices[0].updated_at));
       const hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
 
       if (hoursSinceUpdate < CACHE_VALIDITY_HOURS) {
@@ -83,12 +83,12 @@ export async function updateServicesCache(services?: Record<string, unknown>[]) 
     const servicesToCache = services || (await getServices() as Record<string, unknown>[]);
 
     const servicesToUpsert = servicesToCache.map((service) => ({
-      id: service.id,
-      nombre: service.name,
-      zona_horaria: service.timeZone || null,
-      latitud: service.lat || null,
-      longitud: service.lon || null,
-      datos_completos: service,
+      id: String(service.id),
+      nombre: String(service.name),
+      zona_horaria: service.timeZone ? String(service.timeZone) : null,
+      latitud: service.lat ? Number(service.lat) : null,
+      longitud: service.lon ? Number(service.lon) : null,
+      datos_completos: service as unknown as import("@/integrations/supabase/types").Json,
       updated_at: new Date().toISOString()
     }));
 

@@ -482,7 +482,7 @@ const Restaurantes = () => {
         )}
 
         {/* Diagnostic Info (Dev Mode) */}
-        {process.env.NODE_ENV === 'development' && (
+        {import.meta.env.DEV && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>Diagnóstico del Sistema</AlertTitle>

@@ -107,7 +107,7 @@ const Calendar = () => {
           start: startDate,
           end: endDate,
           resource: { color: "hsl(var(--primary))" },
-          details: s,
+          details: s as unknown as Record<string, unknown>,
         };
       });
 
@@ -137,7 +137,7 @@ const Calendar = () => {
           start: startDate,
           end: endDate,
           resource: { color: "hsl(var(--destructive))" },
-          details: a,
+          details: a as unknown as Record<string, unknown>,
         };
       });
 
@@ -159,8 +159,8 @@ const Calendar = () => {
       hora_inicio: scheduleForm.hora_inicio,
       hora_fin: scheduleForm.hora_fin,
       horas_planificadas: hours,
-      tipo_asignacion: scheduleForm.tipo_asignacion || null,
-      service_id: scheduleForm.service_id || null,
+      tipo_asignacion: scheduleForm.tipo_asignacion || undefined,
+      service_id: scheduleForm.service_id || undefined,
     };
 
     if (editingEvent && editingEvent.type === "schedule") {
@@ -225,24 +225,24 @@ const Calendar = () => {
     setEditingEvent(event);
 
     if (event.type === "schedule") {
-      const schedule = event.details;
+      const schedule = event.details as Record<string, unknown>;
       setScheduleForm({
-        employee_id: schedule.employee_id,
-        fecha: new Date(schedule.fecha),
-        hora_inicio: schedule.hora_inicio,
-        hora_fin: schedule.hora_fin,
-        tipo_asignacion: schedule.tipo_asignacion || "",
-        service_id: schedule.service_id || "",
+        employee_id: String(schedule.employee_id ?? ""),
+        fecha: new Date(String(schedule.fecha)),
+        hora_inicio: String(schedule.hora_inicio ?? ""),
+        hora_fin: String(schedule.hora_fin ?? ""),
+        tipo_asignacion: String(schedule.tipo_asignacion ?? ""),
+        service_id: String(schedule.service_id ?? ""),
       });
       setIsScheduleDialogOpen(true);
     } else {
-      const absence = event.details;
+      const absence = event.details as Record<string, unknown>;
       setAbsenceForm({
-        employee_id: absence.employee_id,
-        fecha: new Date(absence.fecha),
-        horas_ausencia: String(absence.horas_ausencia),
-        tipo: absence.tipo,
-        motivo: absence.motivo || "",
+        employee_id: String(absence.employee_id ?? ""),
+        fecha: new Date(String(absence.fecha)),
+        horas_ausencia: String(absence.horas_ausencia ?? ""),
+        tipo: String(absence.tipo ?? ""),
+        motivo: String(absence.motivo ?? ""),
       });
       setIsAbsenceDialogOpen(true);
     }
@@ -637,7 +637,7 @@ const Calendar = () => {
                     time: "Hora",
                     event: "Evento",
                     noEventsInRange: "No hay eventos en este rango",
-                    showMore: (total) => `+ Ver más (${total})`,
+                    showMore: (total: number) => `+ Ver más (${total})`,
                   }}
                   views={["month", "week", "day", "agenda"]}
                   className="rounded-lg"

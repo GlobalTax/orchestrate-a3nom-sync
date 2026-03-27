@@ -35,7 +35,7 @@ export const useDashboardMetrics = (
       const { data, error } = await supabase.rpc("get_hours_metrics", {
         p_start_date: startDateStr,
         p_end_date: endDateStr,
-        p_centro: centroParam,
+        p_centro: centroParam ?? undefined,
       });
       if (error) throw error;
       return data?.[0] || null;
@@ -49,7 +49,7 @@ export const useDashboardMetrics = (
       const { data, error } = await supabase.rpc("get_cost_metrics", {
         p_start_date: startDateStr,
         p_end_date: endDateStr,
-        p_centro: centroParam,
+        p_centro: centroParam ?? undefined,
       });
       if (error) throw error;
       return data?.[0] || null;
@@ -63,7 +63,7 @@ export const useDashboardMetrics = (
       const { data, error } = await supabase.rpc("get_daily_hours_evolution", {
         p_start_date: startDateStr,
         p_end_date: endDateStr,
-        p_centro: centroParam,
+        p_centro: centroParam ?? undefined,
       });
       if (error) throw error;
       return data?.map((d: DailyHoursRow) => ({
@@ -82,7 +82,7 @@ export const useDashboardMetrics = (
       const { data, error } = await supabase.rpc("get_metrics_by_service", {
         p_start_date: startDateStr,
         p_end_date: endDateStr,
-        p_centro_code: centroParam,
+        p_centro_code: centroParam ?? undefined,
       });
       if (error) throw error;
       return data || [];

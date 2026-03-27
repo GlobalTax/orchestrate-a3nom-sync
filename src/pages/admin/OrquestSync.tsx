@@ -89,7 +89,7 @@ export default function OrquestSync() {
         .limit(50);
 
       if (error) throw error;
-      return data as SyncLog[];
+      return (data as unknown) as SyncLog[];
     },
     refetchInterval: 10000,
   });
@@ -137,7 +137,7 @@ export default function OrquestSync() {
       params.centro_code = selectedCentro;
     }
 
-    executeOperationalSync.mutate(params);
+    executeOperationalSync.mutate(params as { sync_type: string; days_back?: number; centro_code?: string });
   };
 
   const getStatusBadge = (status: string) => {
@@ -578,7 +578,7 @@ export default function OrquestSync() {
                       <TableCell>{servicio.zona_horaria || 'N/A'}</TableCell>
                       <TableCell>{servicio.franchisees?.name || 'N/A'}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {new Date(servicio.updated_at).toLocaleString('es-ES')}
+                        {servicio.updated_at ? new Date(servicio.updated_at).toLocaleString('es-ES') : 'N/A'}
                       </TableCell>
                     </TableRow>
                   ))}
