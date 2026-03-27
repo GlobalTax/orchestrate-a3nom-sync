@@ -1,39 +1,41 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CentroProvider } from "@/contexts/CentroContext";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import ForgotPassword from "./pages/ForgotPassword";
-import Dashboard from "./pages/Dashboard";
-import Employees from "./pages/Employees";
-import EmployeeDetail from "./pages/EmployeeDetail";
-import Calendar from "./pages/Calendar";
-import Costs from "./pages/Costs";
-import Users from "./pages/admin/Users";
-import EmployeeMapping from "./pages/admin/EmployeeMapping";
-import PayrollImport from "./pages/admin/PayrollImport";
-import RestaurantImport from "./pages/admin/RestaurantImport";
-import RestaurantAutoImport from "./pages/admin/RestaurantAutoImport";
-import Audit from "./pages/admin/Audit";
-import Alerts from "./pages/admin/Alerts";
-import Centres from "./pages/admin/Centres";
-import CostCentres from "./pages/admin/CostCentres";
-import Services from "./pages/admin/Services";
-import Restaurantes from "./pages/admin/Restaurantes";
-import Settings from "./pages/admin/Settings";
-import Sync from "./pages/admin/Sync";
-import OrquestSync from "./pages/admin/OrquestSync";
-import Health from "./pages/admin/Health";
-import DataQuality from "./pages/DataQuality";
-import Notifications from "./pages/Notifications";
-import AcceptInvite from "./pages/AcceptInvite";
-import NotFound from "./pages/NotFound";
 import { useUserTheme } from "./hooks/useUserTheme";
 import { RestaurantProvider } from "./contexts/RestaurantContext";
 import Layout from "./components/Layout";
+
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Employees = lazy(() => import("./pages/Employees"));
+const EmployeeDetail = lazy(() => import("./pages/EmployeeDetail"));
+const Calendar = lazy(() => import("./pages/Calendar"));
+const Costs = lazy(() => import("./pages/Costs"));
+const Users = lazy(() => import("./pages/admin/Users"));
+const EmployeeMapping = lazy(() => import("./pages/admin/EmployeeMapping"));
+const PayrollImport = lazy(() => import("./pages/admin/PayrollImport"));
+const RestaurantImport = lazy(() => import("./pages/admin/RestaurantImport"));
+const RestaurantAutoImport = lazy(() => import("./pages/admin/RestaurantAutoImport"));
+const Audit = lazy(() => import("./pages/admin/Audit"));
+const Alerts = lazy(() => import("./pages/admin/Alerts"));
+const Centres = lazy(() => import("./pages/admin/Centres"));
+const CostCentres = lazy(() => import("./pages/admin/CostCentres"));
+const Services = lazy(() => import("./pages/admin/Services"));
+const Restaurantes = lazy(() => import("./pages/admin/Restaurantes"));
+const Settings = lazy(() => import("./pages/admin/Settings"));
+const Sync = lazy(() => import("./pages/admin/Sync"));
+const OrquestSync = lazy(() => import("./pages/admin/OrquestSync"));
+const Health = lazy(() => import("./pages/admin/Health"));
+const DataQuality = lazy(() => import("./pages/DataQuality"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -48,12 +50,13 @@ const App = () => {
             <BrowserRouter>
               <Toaster />
               <Sonner />
+          <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
-            
+
             {/* Protected routes with persistent Layout */}
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
@@ -80,10 +83,11 @@ const App = () => {
               <Route path="/admin/health" element={<Health />} />
               <Route path="/notificaciones" element={<Notifications />} />
             </Route>
-            
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </CentroProvider>
