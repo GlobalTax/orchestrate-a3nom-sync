@@ -44,6 +44,7 @@ const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
+  const [authResolved, setAuthResolved] = useState(false);
   const { isAdmin, loading: roleLoading } = useUserRole();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
