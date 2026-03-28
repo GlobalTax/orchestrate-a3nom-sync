@@ -193,7 +193,13 @@ export default function OrquestSync() {
     );
   }
 
-  if (!isAdmin) return null;
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-full p-6">
+        <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>
+      </div>
+    );
+  }
 
   const lastServicesSync = servicesLogs?.[0];
   const lastOperationalSync = operationalLogs?.[0];

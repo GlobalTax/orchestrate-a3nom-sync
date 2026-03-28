@@ -191,8 +191,20 @@ export default function Audit() {
     setDetailOpen(true);
   };
 
-  if (roleLoading || !isAdmin) {
-    return null;
+  if (roleLoading) {
+    return (
+      <div className="flex items-center justify-center h-full p-6">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-full p-6">
+        <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>
+      </div>
+    );
   }
 
   return (

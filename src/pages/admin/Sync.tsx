@@ -154,7 +154,13 @@ export default function Sync() {
     );
   }
 
-  if (!isAdmin) return null;
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-full p-6">
+        <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>
+      </div>
+    );
+  }
 
   // Calculate statistics
   const recentLogs = logs?.slice(0, 10) || [];
