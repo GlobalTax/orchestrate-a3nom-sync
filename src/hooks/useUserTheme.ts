@@ -1,15 +1,16 @@
 import { useEffect } from "react";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthReady } from "./useAuthReady";
 
 export const useUserTheme = () => {
   const { setTheme, theme } = useTheme();
+  const { user, isReady } = useAuthReady();
 
   useEffect(() => {
-    const loadUserTheme = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    if (!isReady || !user) return;
 
+    const loadUserTheme = async () => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('theme')
@@ -22,10 +23,9 @@ export const useUserTheme = () => {
     };
 
     loadUserTheme();
-  }, [setTheme, theme]);
+  }, [setTheme, theme, user, isReady]);
 
   const updateUserTheme = async (newTheme: 'light' | 'dark' | 'system') => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: new Error('Usuario no autenticado') };
 
     setTheme(newTheme);

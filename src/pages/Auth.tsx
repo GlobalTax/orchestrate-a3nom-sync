@@ -1,15 +1,18 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState } from "react";
+import { Navigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthReady } from "@/hooks/useAuthReady";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Building2, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { user, isReady } = useAuthReady();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -17,16 +20,17 @@ const Auth = () => {
   const [nombre, setNombre] = useState("");
   const [apellidos, setApellidos] = useState("");
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/dashboard");
-      }
-    };
-    checkUser();
-  }, [navigate]);
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,13 +38,8 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
         toast.success("¡Bienvenido de nuevo!");
         navigate("/dashboard");
       } else {
@@ -49,15 +48,10 @@ const Auth = () => {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: {
-              nombre,
-              apellidos,
-            },
+            data: { nombre, apellidos },
           },
         });
-
         if (error) throw error;
-
         toast.success("Cuenta creada. Por favor, verifica tu email.");
       }
     } catch (error: unknown) {
@@ -92,50 +86,21 @@ const Auth = () => {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="nombre">Nombre</Label>
-                  <Input
-                    id="nombre"
-                    type="text"
-                    placeholder="Juan"
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
-                    required={!isLogin}
-                  />
+                  <Input id="nombre" type="text" placeholder="Juan" value={nombre} onChange={(e) => setNombre(e.target.value)} required={!isLogin} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="apellidos">Apellidos</Label>
-                  <Input
-                    id="apellidos"
-                    type="text"
-                    placeholder="García López"
-                    value={apellidos}
-                    onChange={(e) => setApellidos(e.target.value)}
-                    required={!isLogin}
-                  />
+                  <Input id="apellidos" type="text" placeholder="García López" value={apellidos} onChange={(e) => setApellidos(e.target.value)} required={!isLogin} />
                 </div>
               </>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <Input id="email" type="email" placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
+              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -143,20 +108,11 @@ const Auth = () => {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm space-y-2">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline block w-full"
-            >
-              {isLogin
-                ? "¿No tienes cuenta? Regístrate"
-                : "¿Ya tienes cuenta? Inicia sesión"}
+            <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline block w-full">
+              {isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
             </button>
             {isLogin && (
-              <Link
-                to="/forgot-password"
-                className="text-muted-foreground hover:text-primary text-sm block"
-              >
+              <Link to="/forgot-password" className="text-muted-foreground hover:text-primary text-sm block">
                 ¿Olvidaste tu contraseña?
               </Link>
             )}
