@@ -1,27 +1,47 @@
-import { useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-export function useAuthReady() {
+interface AuthReadyContextType {
+  user: User | null;
+  isReady: boolean;
+}
+
+const AuthReadyContext = createContext<AuthReadyContextType>({ user: null, isReady: false });
+
+export function AuthReadyProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Restore session from storage first
+    let isMounted = true;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setIsReady(true);
+      if (isMounted) {
+        setUser(session?.user ?? null);
+        setIsReady(true);
+      }
     });
 
-    // Listen for subsequent auth changes (sign in/out)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
         setUser(session?.user ?? null);
       }
-    );
+    });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  return { user, isReady };
+  return (
+    <AuthReadyContext.Provider value={{ user, isReady }}>
+      {children}
+    </AuthReadyContext.Provider>
+  );
+}
+
+export function useAuthReady() {
+  return useContext(AuthReadyContext);
 }

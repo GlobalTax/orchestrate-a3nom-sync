@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CentroProvider } from "@/contexts/CentroContext";
 import { useUserTheme } from "./hooks/useUserTheme";
 import { RestaurantProvider } from "./contexts/RestaurantContext";
+import { AuthReadyProvider } from "./hooks/useAuthReady";
 import Layout from "./components/Layout";
 
 const Index = lazy(() => import("./pages/Index"));
@@ -91,13 +92,15 @@ const App = () => {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <RestaurantProvider>
-          <CentroProvider>
-            <TooltipProvider>
-              <AppInner />
-            </TooltipProvider>
-          </CentroProvider>
-        </RestaurantProvider>
+        <AuthReadyProvider>
+          <RestaurantProvider>
+            <CentroProvider>
+              <TooltipProvider>
+                <AppInner />
+              </TooltipProvider>
+            </CentroProvider>
+          </RestaurantProvider>
+        </AuthReadyProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
