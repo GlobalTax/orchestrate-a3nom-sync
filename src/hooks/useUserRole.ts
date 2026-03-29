@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { logger } from "@/lib/logger";
+import { useAuthReady } from "./useAuthReady";
 
 export type AppRole = "admin" | "franquiciado" | "gestor" | "asesoria";
 
@@ -13,32 +13,15 @@ interface UserRoleData {
 }
 
 export const useUserRole = () => {
-  const [authTrigger, setAuthTrigger] = useState(0);
-
-  // Listen to auth changes
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      setAuthTrigger(prev => prev + 1);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { user, isReady } = useAuthReady();
 
   const { data, isLoading: loading } = useQuery<UserRoleData>({
-    queryKey: ['user_role', authTrigger],
+    queryKey: ['user_role', user?.id],
     queryFn: async (): Promise<UserRoleData> => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
-        return {
-          roles: [],
-          centros: [],
-          franchiseeId: null,
-          userId: null,
-        };
+        return { roles: [], centros: [], franchiseeId: null, userId: null };
       }
 
-      // Fetch user roles with franchisee_id (explicitly filter by user)
       const { data: userRoles, error } = await supabase
         .from("user_roles")
         .select("role, centro, franchisee_id")
@@ -47,12 +30,9 @@ export const useUserRole = () => {
       if (error) throw error;
 
       const uniqueRoles = [...new Set((userRoles ?? []).map((r) => r.role as AppRole))];
-
-      // Extract franchisee_id if exists
       const franchiseeRole = (userRoles ?? []).find((r) => r.franchisee_id);
       const franchiseeId = franchiseeRole?.franchisee_id || null;
 
-      // Fetch accessible centros from view
       const { data: userCentres } = await supabase
         .from("v_user_centres")
         .select("centro_code")
@@ -66,10 +46,6 @@ export const useUserRole = () => {
         roles: uniqueRoles,
         centros: accessibleCentros,
         franchiseeId,
-        isAdmin: uniqueRoles.includes('admin'),
-        isFranquiciado: uniqueRoles.includes('franquiciado'),
-        isGestor: uniqueRoles.includes('gestor'),
-        isAsesoria: uniqueRoles.includes('asesoria'),
       });
 
       return {
@@ -79,8 +55,9 @@ export const useUserRole = () => {
         userId: user.id,
       };
     },
-    staleTime: 0, // No caché, siempre refetch
-    gcTime: 10 * 60 * 1000, // 10 minutos (antes cacheTime)
+    enabled: isReady && !!user,
+    staleTime: 0,
+    gcTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
@@ -96,8 +73,6 @@ export const useUserRole = () => {
   const isFranquiciado = hasRole("franquiciado");
   const isGestor = hasRole("gestor");
   const isAsesoria = hasRole("asesoria");
-  
-  // Asesoría only has read access
   const canWrite = isAdmin || isFranquiciado || isGestor;
   
   const canAccessCentro = (centro: string) => {

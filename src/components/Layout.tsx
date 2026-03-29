@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation, Outlet } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Session } from "@supabase/supabase-js";
+import { useNavigate, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuthReady } from "@/hooks/useAuthReady";
+import { supabase } from "@/integrations/supabase/client";
 import {
   SidebarProvider,
   Sidebar,
@@ -14,7 +14,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { 
   LayoutDashboard, 
@@ -43,8 +42,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [session, setSession] = useState<Session | null>(null);
-  const [authResolved, setAuthResolved] = useState(false);
+  const { user, isReady } = useAuthReady();
   const { isAdmin, loading: roleLoading } = useUserRole();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -54,34 +52,13 @@ const Layout = () => {
     if (isAdmin) setEverAdmin(true);
   }, [isAdmin]);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthResolved(true);
-      if (!session) {
-        navigate("/auth");
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (!session) {
-        navigate("/auth");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
   // Redirect non-admin users from admin routes
   useEffect(() => {
-    if (!roleLoading && session && !isAdmin && location.pathname.startsWith("/admin")) {
+    if (!roleLoading && user && !isAdmin && location.pathname.startsWith("/admin")) {
       navigate("/dashboard");
       toast.error("No tienes permisos para acceder a esta sección");
     }
-  }, [session, isAdmin, roleLoading, location.pathname, navigate]);
+  }, [user, isAdmin, roleLoading, location.pathname, navigate]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -102,7 +79,8 @@ const Layout = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  if (!authResolved || roleLoading) {
+  // Show loader while auth or roles are resolving
+  if (!isReady || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -113,8 +91,9 @@ const Layout = () => {
     );
   }
 
-  if (!session) {
-    return null;
+  // Redirect to auth if no user
+  if (!user) {
+    return <Navigate to="/auth" replace />;
   }
 
   return (
@@ -165,153 +144,53 @@ const Layout = () => {
                 <SidebarGroupContent>
                   <SidebarMenu>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/users")}
-                        isActive={isActive("/admin/users")}
-                        tooltip="Administrar Usuarios"
-                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                          isActive("/admin/users") 
-                            ? "bg-primary/8 text-primary font-medium" 
-                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <Shield className="h-4 w-4 mr-2" />
-                        <span>Administrar Usuarios</span>
+                      <SidebarMenuButton onClick={() => navigate("/admin/users")} isActive={isActive("/admin/users")} tooltip="Administrar Usuarios" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/users") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <Shield className="h-4 w-4 mr-2" /><span>Administrar Usuarios</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/mapeo-empleados")}
-                        isActive={isActive("/admin/mapeo-empleados")}
-                        tooltip="Mapeo de IDs"
-                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                          isActive("/admin/mapeo-empleados") 
-                            ? "bg-primary/8 text-primary font-medium" 
-                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <Users className="h-4 w-4 mr-2" />
-                        <span>Mapeo de IDs</span>
+                      <SidebarMenuButton onClick={() => navigate("/admin/mapeo-empleados")} isActive={isActive("/admin/mapeo-empleados")} tooltip="Mapeo de IDs" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/mapeo-empleados") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <Users className="h-4 w-4 mr-2" /><span>Mapeo de IDs</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/importar-nominas")}
-                        isActive={isActive("/admin/importar-nominas")}
-                        tooltip="Importar Nóminas"
-                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                          isActive("/admin/importar-nominas") 
-                            ? "bg-primary/8 text-primary font-medium" 
-                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <FileSpreadsheet className="h-4 w-4 mr-2" />
-                        <span>Importar Nóminas</span>
+                      <SidebarMenuButton onClick={() => navigate("/admin/importar-nominas")} isActive={isActive("/admin/importar-nominas")} tooltip="Importar Nóminas" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/importar-nominas") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <FileSpreadsheet className="h-4 w-4 mr-2" /><span>Importar Nóminas</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/auditoria")}
-                        isActive={isActive("/admin/auditoria")}
-                        tooltip="Auditoría"
-                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                          isActive("/admin/auditoria") 
-                            ? "bg-primary/8 text-primary font-medium" 
-                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <History className="h-4 w-4 mr-2" />
-                        <span>Auditoría</span>
+                      <SidebarMenuButton onClick={() => navigate("/admin/auditoria")} isActive={isActive("/admin/auditoria")} tooltip="Auditoría" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/auditoria") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <History className="h-4 w-4 mr-2" /><span>Auditoría</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/alertas")}
-                        isActive={isActive("/admin/alertas")}
-                        tooltip="Alertas"
-                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                          isActive("/admin/alertas") 
-                            ? "bg-primary/8 text-primary font-medium" 
-                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <Bell className="h-4 w-4 mr-2" />
-                        <span>Alertas</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => navigate("/admin/restaurantes")}
-                  isActive={isActive("/admin/restaurantes")}
-                  tooltip="Restaurantes"
-                  className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                    isActive("/admin/restaurantes") 
-                      ? "bg-primary/8 text-primary font-medium" 
-                      : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                  }`}
-                >
-                  <Building2 className="h-4 w-4 mr-2" />
-                  <span>Restaurantes</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/sincronizacion-orquest")}
-                        isActive={isActive("/admin/sincronizacion-orquest")}
-                        tooltip="Sincronización Orquest"
-                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                          isActive("/admin/sincronizacion-orquest") 
-                            ? "bg-primary/8 text-primary font-medium" 
-                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        <span>Sync Orquest</span>
+                      <SidebarMenuButton onClick={() => navigate("/admin/alertas")} isActive={isActive("/admin/alertas")} tooltip="Alertas" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/alertas") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <Bell className="h-4 w-4 mr-2" /><span>Alertas</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/sincronizar")}
-                        isActive={isActive("/admin/sincronizar")}
-                        tooltip="Sincronización Operativa"
-                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                          isActive("/admin/sincronizar") 
-                            ? "bg-primary/8 text-primary font-medium" 
-                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <Server className="h-4 w-4 mr-2" />
-                        <span>Sync Operativa</span>
+                      <SidebarMenuButton onClick={() => navigate("/admin/restaurantes")} isActive={isActive("/admin/restaurantes")} tooltip="Restaurantes" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/restaurantes") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <Building2 className="h-4 w-4 mr-2" /><span>Restaurantes</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/health")}
-                        isActive={isActive("/admin/health")}
-                        tooltip="Estado del Sistema"
-                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                          isActive("/admin/health") 
-                            ? "bg-primary/8 text-primary font-medium" 
-                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <Activity className="h-4 w-4 mr-2" />
-                        <span>Estado del Sistema</span>
+                      <SidebarMenuButton onClick={() => navigate("/admin/sincronizacion-orquest")} isActive={isActive("/admin/sincronizacion-orquest")} tooltip="Sincronización Orquest" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/sincronizacion-orquest") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <RefreshCw className="h-4 w-4 mr-2" /><span>Sync Orquest</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => navigate("/admin/ajustes")}
-                        isActive={isActive("/admin/ajustes")}
-                        tooltip="Ajustes"
-                        className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${
-                          isActive("/admin/ajustes") 
-                            ? "bg-primary/8 text-primary font-medium" 
-                            : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <Settings2 className="h-4 w-4 mr-2" />
-                        <span>Ajustes</span>
+                      <SidebarMenuButton onClick={() => navigate("/admin/sincronizar")} isActive={isActive("/admin/sincronizar")} tooltip="Sincronización Operativa" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/sincronizar") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <Server className="h-4 w-4 mr-2" /><span>Sync Operativa</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={() => navigate("/admin/health")} isActive={isActive("/admin/health")} tooltip="Estado del Sistema" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/health") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <Activity className="h-4 w-4 mr-2" /><span>Estado del Sistema</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={() => navigate("/admin/ajustes")} isActive={isActive("/admin/ajustes")} tooltip="Ajustes" className={`h-8 px-3 text-[13px] transition-all duration-150 ease-linear-ease ${isActive("/admin/ajustes") ? "bg-primary/8 text-primary font-medium" : "text-sidebar-foreground/70 font-normal hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}>
+                        <Settings2 className="h-4 w-4 mr-2" /><span>Ajustes</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>
